@@ -1,0 +1,1434 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PDF Magie · Mr Triton</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icone-192.png">
+<link rel="apple-touch-icon" href="icons/icone-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="PDF Magie">
+<meta name="theme-color" content="#2A211A">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Abril+Fatface&amp;family=Cinzel:wght@500;700&amp;family=Jost:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+/* ---------- Application ---------- */
+:root{--ui-bg:#5f5a55;--ui-bar:#2A211A;--ui-gold:#D8B46A;--ui-text:#F6EEDD}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--ui-bg);font-family:'Jost',system-ui,sans-serif}
+a{color:inherit}
+.barre{position:sticky;top:0;z-index:10;display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;padding:10px 20px;background:var(--ui-bar);color:var(--ui-text);box-shadow:0 2px 10px rgba(0,0,0,.35)}
+.barre .marque{font-family:'Cinzel',serif;font-weight:700;letter-spacing:.14em;color:var(--ui-gold);font-size:14px;margin-right:6px}
+.barre label{font-size:13px;opacity:.8;margin-right:4px}
+.barre select{font:inherit;font-size:14px;padding:5px 8px;border-radius:6px;border:1px solid #6b5c4c;background:#3a2f26;color:var(--ui-text)}
+.onglets{display:flex;border:1px solid #6b5c4c;border-radius:8px;overflow:hidden}
+.onglets button{font:inherit;font-size:14px;padding:6px 14px;border:0;background:#3a2f26;color:var(--ui-text);cursor:pointer}
+.onglets button+button{border-left:1px solid #6b5c4c}
+.onglets button[aria-pressed="true"]{background:var(--ui-gold);color:#2A211A;font-weight:600}
+.btn-pdf{font:inherit;font-size:14px;font-weight:600;padding:7px 16px;border:0;border-radius:8px;background:var(--ui-gold);color:#2A211A;cursor:pointer}
+.btn-pdf:hover{filter:brightness(1.08)}
+.btn-pdf:disabled{opacity:.5;cursor:default;filter:none}
+.etat-sauvegarde{margin-left:auto;font-size:12.5px;opacity:.75}
+.etat-sauvegarde[data-etat="erreur"]{color:#ffb08a;opacity:1;font-weight:600}
+.btn-barre{font:inherit;font-size:14px;padding:6px 14px;border:1px solid #6b5c4c;border-radius:8px;background:#3a2f26;color:var(--ui-text);cursor:pointer}
+.btn-barre:hover{border-color:var(--ui-gold)}
+.btn-barre.a-exporter::after{content:'';display:inline-block;width:8px;height:8px;margin-left:7px;border-radius:50%;background:#ff9f5a;vertical-align:1px}
+#dlgSauvegarde{width:min(520px,92vw);padding:0;border:0;border-radius:12px;background:#F3ECDF;color:#2A211A;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+#dlgSauvegarde::backdrop{background:rgba(20,14,10,.6)}
+.sauv-corps{padding:6px 20px 20px;font-size:14px;line-height:1.5}
+.sauv-corps p{margin:10px 0}
+.sauv-actions{display:flex;flex-direction:column;gap:10px;margin-top:16px}
+.sauv-actions .btn-import{text-align:center;border:0;font:inherit;font-size:14px;font-weight:600}
+.sauv-actions .secondaire{background:#fffdf8;color:#2A211A;border:1px solid #b9a88f}
+.sauv-actions .secondaire:hover{background:#fff}
+.alerte{width:100%;font-size:13px;color:#ffd7a8}
+.alerte:empty{display:none}
+.app{display:flex;flex-direction:column;height:100vh}
+.espace{flex:1;min-height:0;display:flex}
+.scene{flex:1;min-width:0;overflow:auto;display:flex;flex-wrap:wrap;justify-content:center;align-content:flex-start;gap:24px;padding:24px 20px 60px;--echelle:1}
+.feuille{flex-shrink:0;box-shadow:0 8px 30px rgba(0,0,0,.45);width:calc(794px*var(--echelle));height:calc(1123px*var(--echelle));overflow:hidden}
+.feuille .page{transform:scale(var(--echelle));transform-origin:0 0}
+.sans-editeur .editeur{display:none}
+
+/* ---------- Éditeur ---------- */
+.editeur{width:450px;flex-shrink:0;display:flex;flex-direction:column;background:#F3ECDF;color:#2A211A;border-right:1px solid #2A211A}
+.onglets-ed{display:flex;background:#E5DACA;border-bottom:1px solid #cdbfa9}
+.onglets-ed button{flex:1;font:inherit;font-size:13.5px;padding:10px 4px;border:0;border-bottom:3px solid transparent;background:none;color:#5b4d3f;cursor:pointer}
+.onglets-ed button[aria-pressed="true"]{color:#2A211A;font-weight:600;border-bottom-color:#A8823F;background:#F3ECDF}
+#editeur-contenu{flex:1;overflow:auto;padding:6px 18px 40px}
+.bloc{padding:14px 0 16px;border-bottom:1px solid #ddd0bc}
+.bloc h2{margin:0 0 10px;font-family:'Cinzel',serif;font-size:14px;letter-spacing:.1em;color:#7a5a2c}
+.aide{margin:-4px 0 10px;font-size:12.5px;color:#7b6d5e}
+.champ{display:flex;flex-direction:column;gap:3px;margin-bottom:10px;flex:1;min-width:0}
+.champ>span{font-size:12.5px;font-weight:500;color:#5b4d3f}
+.champ>span i{font-weight:400;font-style:normal;color:#9a8b7a;font-size:11.5px;margin-left:4px}
+.champ small{font-size:11.5px;color:#8a7c6c}
+.champ input[type=text],.champ textarea,.champ select{font:inherit;font-size:14px;padding:7px 9px;border:1px solid #cdbfa9;border-radius:6px;background:#fffdf8;color:#2A211A;width:100%}
+.champ textarea{resize:vertical;line-height:1.4}
+.champ input:focus,.champ textarea:focus,.champ select:focus{outline:2px solid #D8B46A;outline-offset:0;border-color:#A8823F}
+.champ.etroit{flex:0 0 120px}
+.rangee{display:flex;gap:10px}
+.case{display:flex;gap:8px;align-items:center;font-size:14px;margin-bottom:10px;cursor:pointer}
+button.petit{font:inherit;font-size:13px;padding:5px 10px;border:1px solid #b9a88f;border-radius:6px;background:#fffdf8;color:#2A211A;cursor:pointer}
+button.petit:hover{background:#fff;border-color:#A8823F}
+button.petit.discret{border-color:transparent;background:none;color:#8a5a4a}
+button.petit.danger{color:#9b2335;border-color:#d9a8a8}
+.actions-presta{display:flex;flex-wrap:wrap;gap:8px;padding:12px 0 4px}
+.image-ligne{display:flex;gap:10px;align-items:center}
+.image-boutons{display:flex;flex-direction:column;gap:4px;align-items:flex-start}
+.miniature{width:92px;height:64px;flex-shrink:0;padding:0;border:1px solid #cdbfa9;border-radius:6px;background:#e6ded0 repeating-linear-gradient(45deg,transparent 0 6px,rgba(255,255,255,.35) 6px 12px);cursor:pointer;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.miniature img{width:100%;height:100%;object-fit:contain}
+.miniature em{font-size:12px;color:#8a7c6c;font-style:normal}
+.miniature.polaroid{width:62px;height:56px}
+.picto-ligne{display:flex;gap:8px;align-items:center}
+.picto-apercu svg{display:block}
+.liste{margin:6px 0 4px}
+.liste-titre{font-size:13px;font-weight:600;color:#5b4d3f;margin:10px 0 6px}
+.compte{display:inline-block;min-width:20px;padding:0 6px;border-radius:10px;background:#e2d5c1;font-size:11.5px;text-align:center;font-weight:500}
+.carte{border:1px solid #d6c8b2;border-radius:8px;background:#fbf7ef;margin-bottom:8px}
+.carte-tete{display:flex;align-items:center;gap:4px;padding:5px 6px 5px 10px;border-bottom:1px solid #e6dccb}
+.carte-num{font-size:11.5px;font-weight:600;color:#A8823F;min-width:16px}
+.carte-nom{flex:1;min-width:0;font-size:13px;color:#4a3f35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.icone{width:26px;height:26px;padding:0;border:0;border-radius:5px;background:none;color:#5b4d3f;font-size:14px;cursor:pointer}
+.icone:hover:not(:disabled){background:#eadfcd}
+.icone:disabled{opacity:.25;cursor:default}
+.icone.suppr:hover{background:#f3d6d6;color:#9b2335}
+.carte-corps{padding:10px 10px 2px}
+.ajouter{width:100%;font:inherit;font-size:13px;padding:7px;border:1px dashed #b9a88f;border-radius:8px;background:none;color:#7a5a2c;cursor:pointer}
+.ajouter:hover{background:#fffaf0;border-color:#A8823F}
+.roue-bloc{display:flex;gap:16px;align-items:flex-start}
+.roue{position:relative;width:176px;height:176px;flex-shrink:0}
+.roue canvas{display:block;cursor:crosshair;border-radius:50%;touch-action:none}
+.roue-curseur{position:absolute;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.5),0 2px 4px rgba(0,0,0,.4);pointer-events:none}
+.roue-droite{flex:1;min-width:0}
+.roue-lum{width:100%;height:12px;border-radius:6px;-webkit-appearance:none;appearance:none;outline:none;border:1px solid #cdbfa9}
+.roue-lum::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:#fff;border:2px solid #2A211A;cursor:pointer}
+.roue-hex{font-family:ui-monospace,Consolas,monospace!important;text-transform:uppercase}
+.nuancier{margin-bottom:8px}
+.nuancier>span{display:block;font-size:12.5px;font-weight:500;color:#5b4d3f;margin-bottom:4px}
+.nuancier>div{display:flex;gap:6px}
+.teinte{width:30px;height:22px;border-radius:4px;border:1px solid rgba(0,0,0,.15)}
+.pastille{width:28px;height:28px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px #b9a88f;cursor:pointer;padding:0}
+.ajouter-ligne{display:flex;gap:8px}
+.ajouter.catalogue{color:#2A211A;border-style:solid;background:#fbf3e0}
+.garder{margin:-2px 0 8px;text-align:right}
+#dlgCatalogue{width:min(720px,92vw);max-height:86vh;padding:0;border:0;border-radius:12px;background:#F3ECDF;color:#2A211A;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+#dlgCatalogue::backdrop{background:rgba(20,14,10,.6)}
+#dlgCatalogue .aide{margin:10px 18px 0}
+#cat-recherche{font:inherit;font-size:14px;padding:6px 10px;border:1px solid #cdbfa9;border-radius:6px;background:#fffdf8;width:200px}
+#cat-liste{padding:10px 18px 20px}
+.cat-item{display:flex;align-items:center;gap:12px;padding:8px 10px;border:1px solid #d6c8b2;border-radius:8px;background:#fbf7ef;margin-bottom:8px}
+.cat-item img,.cat-sans{width:50px;height:45px;flex-shrink:0;object-fit:cover}
+.cat-sans{border:1px dashed #cdbfa9;border-radius:4px}
+.cat-texte{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px;font-size:14px}
+.cat-texte small{font-size:12px;color:#7b6d5e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cat-prix{font-weight:600;color:#7a2a2a;white-space:nowrap;font-size:14px}
+.cat-prix s{font-weight:400;color:#8a7c6c;font-size:12.5px}
+.cat-item button.fait{color:#6b7f5a;border-color:#c8d2bb}
+#notif{position:fixed;left:50%;bottom:24px;transform:translate(-50%,20px);padding:10px 18px;border-radius:8px;background:#2A211A;color:#F6EEDD;font-size:14px;box-shadow:0 6px 20px rgba(0,0,0,.4);opacity:0;pointer-events:none;transition:.25s;z-index:50}
+#notif.visible{opacity:1;transform:translate(-50%,0)}
+#dlgImages{width:min(880px,92vw);max-height:86vh;padding:0;border:0;border-radius:12px;background:#F3ECDF;color:#2A211A;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+#dlgImages::backdrop{background:rgba(20,14,10,.6)}
+.biblio-tete{display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid #ddd0bc;position:sticky;top:0;background:#F3ECDF;z-index:1}
+.biblio-tete h2{margin:0;flex:1;font-family:'Cinzel',serif;font-size:16px;letter-spacing:.08em;color:#7a5a2c}
+.btn-import{font-size:14px;font-weight:600;padding:7px 14px;border-radius:8px;background:#2A211A;color:#F6EEDD;cursor:pointer}
+.btn-import:hover{background:#4a3a2d}
+#dlgImages .aide{margin:10px 18px 0}
+#biblio-grille{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px;padding:14px 18px 20px}
+.biblio-item{display:flex;flex-direction:column;gap:4px;padding:6px;border:2px solid transparent;border-radius:8px;background:#fbf7ef;cursor:pointer;font:inherit}
+.biblio-item:hover{border-color:#D8B46A}
+.biblio-item.actif{border-color:#A8823F;background:#fff6e0}
+.biblio-item img{width:100%;height:96px;object-fit:contain;background:#e6ded0;border-radius:4px}
+.biblio-item span{font-size:11.5px;color:#5b4d3f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left}
+.feuille-etiquette{font-size:12px;color:#e9e1d3;text-align:center;margin-bottom:6px;letter-spacing:.08em}
+.debord{outline:4px solid #ff8a00;outline-offset:2px}
+
+/* ---------- Pages A4 (charte « Cabaret ») ---------- */
+@page{size:A4;margin:0}
+.page{position:relative;width:794px;height:1123px;overflow:hidden;font-family:'Jost',sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.page img{display:block}
+.page .tex{position:absolute;left:0;top:0;width:100%;height:100%;object-fit:cover;mix-blend-mode:multiply}
+.page{--esp:1}
+.page .corps>*{flex-shrink:0}
+.page .pointilles{flex:1 1 0;min-width:20px;height:3px;transform:translateY(-3px);overflow:hidden}
+.page .pointilles svg{display:block}
+.page .etoile{position:absolute}
+.page .etoile svg{display:block}
+
+@media print{
+  html,body{background:none}
+  .barre,.feuille-etiquette,.editeur,dialog,#notif{display:none!important}
+  .app,.espace{display:block;height:auto}
+  .scene{display:block;padding:0;overflow:visible}
+  .feuille{box-shadow:none;width:auto;height:auto;overflow:visible}
+  .feuille .page{transform:none}
+  .feuille:not(.a-imprimer){display:none}
+  .debord{outline:none}
+  /* 297 mm = 1122,5 px : on rogne le demi-pixel pour éviter une 2ᵉ page blanche */
+  .page{width:210mm;height:297mm;break-after:avoid;page-break-after:avoid}
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+<div class="barre">
+  <span class="marque">MR TRITON · SUPPORTS</span>
+  <span><label for="selPresta">Prestation</label><select id="selPresta"></select></span>
+  <div class="onglets" role="group" aria-label="Document">
+    <button data-doc="plaquette">Plaquette</button>
+    <button data-doc="fiche">Fiche technique</button>
+    <button data-doc="tarifs">Tarifs</button>
+    <button data-doc="tous">Les trois</button>
+  </div>
+  <span class="etat-sauvegarde" id="etatSauvegarde" data-etat="attente">Chargement…</span>
+  <button class="btn-barre" id="btnSauvegarde">Sauvegarde</button>
+  <button class="btn-pdf" id="btnPdf">Exporter en PDF</button>
+  <div class="alerte" id="alerte"></div>
+</div>
+
+<div class="espace">
+  <aside class="editeur">
+    <nav class="onglets-ed">
+      <button data-onglet="global">Coordonnées</button>
+      <button data-onglet="prestation">Prestation</button>
+      <button data-onglet="fiche">Fiche technique</button>
+      <button data-onglet="tarifs">Tarifs</button>
+    </nav>
+    <div id="editeur-contenu"></div>
+  </aside>
+  <main class="scene" id="scene"></main>
+</div>
+</div>
+
+<dialog id="dlgSauvegarde">
+  <div class="biblio-tete">
+    <h2>Sauvegarde</h2>
+    <button type="button" class="petit" onclick="this.closest('dialog').close()">Fermer</button>
+  </div>
+  <div class="sauv-corps">
+    <p>Vos modifications sont <b>enregistrées automatiquement</b> dans ce navigateur. Pour ne rien perdre (changement d’ordinateur, nettoyage du navigateur), exportez régulièrement une sauvegarde : un fichier qui contient tout, images comprises.</p>
+    <p id="infoContenu"></p>
+    <p id="infoExport"></p>
+    <div class="sauv-actions">
+      <button type="button" class="btn-import" id="btnExporter">Exporter une sauvegarde</button>
+      <label class="btn-import secondaire">Ajouter des prestations depuis un fichier…<input type="file" id="fichierAjout" accept=".json,application/json" hidden></label>
+      <label class="btn-import secondaire">Importer une sauvegarde (remplace tout)…<input type="file" id="fichierSauvegarde" accept=".json,application/json" hidden></label>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="dlgCatalogue">
+  <div class="biblio-tete">
+    <h2 id="cat-titre">Mes options enregistrées</h2>
+    <input type="search" id="cat-recherche" placeholder="Rechercher…">
+    <button type="button" class="petit" onclick="this.closest('dialog').close()">Fermer</button>
+  </div>
+  <p class="aide">Une ligne ajoutée est une copie : vous pouvez la modifier dans la grille sans toucher à vos options.</p>
+  <div id="cat-liste"></div>
+</dialog>
+<div id="notif" role="status"></div>
+
+<dialog id="dlgImages">
+  <div class="biblio-tete">
+    <h2>Choisir une image</h2>
+    <label class="btn-import">Importer depuis l’ordinateur…<input type="file" id="biblio-fichier" accept="image/*" multiple hidden></label>
+    <button type="button" class="petit" onclick="this.closest('dialog').close()">Fermer</button>
+  </div>
+  <p class="aide">Cliquez sur une image pour la choisir, ou glissez-déposez des fichiers ici. Les images importées restent disponibles pour tous les champs.</p>
+  <div id="biblio-grille"></div>
+</dialog>
+
+<script>
+/* =====================================================================
+   Données par défaut (premier lancement) : jeu d'exemple Illusion.
+   Ensuite, les données vivent dans IndexedDB (voir « Stockage »).
+   ===================================================================== */
+let DONNEES = {
+  "version": 1,
+  "global": {
+    "nom": "Florian Cohen",
+    "nomScene": "Mr Triton",
+    "statut": "Intermittent du spectacle",
+    "adresse": "242 ch. de St Sébastien",
+    "codePostal": "06690",
+    "ville": "Tourrette-Levens",
+    "telephone": "06 19 47 14 53",
+    "email": "contact@triton-magicien.com",
+    "site": "www.triton-magicien.com",
+    "distinctions": [
+      { "texte": "3ᵉ prix Championnat du Monde 2022", "imageOr": "assets/laurier-monde-or.png", "imageBrun": "assets/laurier-monde-brun.png" },
+      { "texte": "Champion de France 2018", "imageOr": "assets/laurier-france-or.png", "imageBrun": "assets/laurier-france-brun.png" }
+    ],
+    "mentionDeplacement": "Des frais de déplacement peuvent s’ajouter.",
+    "formulePolitesse": "Avec mes remerciements pour l’attention que vous voudrez bien accorder à ma proposition."
+  },
+  "catalogue": [
+    { "id": "lumieres-interactives", "libelle": "Lumières interactives", "description": "Une ambiance différente à chaque tableau · conseillé en pénombre", "prix": "+ 100 €" },
+    { "id": "deuxieme-grande-illusion", "libelle": "Deuxième grande illusion en duo", "prix": "+ 150 €" },
+    { "id": "lumieres-fixes-fumee", "libelle": "Lumières fixes et effets de fumée", "description": "Conseillé, sauf en plein soleil · −80 € si vous ne les souhaitez pas", "prix": "inclus" },
+    { "id": "sculpture-ballons", "libelle": "Sculpture sur ballons", "prix": "130 €", "ancienPrix": "320 €", "polaroid": "assets/polaroid-ballons.jpg" },
+    { "id": "bulles-geantes", "libelle": "Bulles géantes", "description": "Environ 30 min", "prix": "180 €", "ancienPrix": "380 €", "polaroid": "assets/polaroid-bulles.jpg" },
+    { "id": "atelier-decouverte", "libelle": "Atelier découverte", "description": "Des tours de magie que les enfants pourront refaire chez eux", "prix": "130 €", "ancienPrix": "350 €", "polaroid": "assets/polaroid-decouverte.jpg" }
+  ],
+  "prestations": [
+    {
+      "id": "illusion",
+      "nom": "Illusion",
+      "sousTitre": "Spectacle de magie familial",
+      "accent": "#A3162B",
+      "photoPrincipale": "assets/illusion-scene.jpg",
+      "photoMedaillon": "assets/illusion-beige.jpg",
+      "legendeMedaillon": "Version familiale",
+      "presentation": "Mr Triton vous présente un spectacle familial et interactif alliant surprises, humour et poésie. Lévitation, apparitions de balles et de monnaie… et peut-être même la visite d’un petit fantôme ! La participation du public rend le spectacle féerique et inoubliable.",
+      "video": "https://youtu.be/ptH2LIojWSQ",
+      "duree": "50 min",
+      "versions": [
+        { "nom": "Enfants", "detail": "costume rouge" },
+        { "nom": "Familiale", "detail": "costume beige et mentalisme" }
+      ],
+      "fiche": {
+        "chiffres": [
+          { "label": "Spectacle", "valeur": "50 min" },
+          { "label": "Installation", "valeur": "2 h" },
+          { "label": "Rangement", "valeur": "1 h 30" },
+          { "label": "Jauge max.", "valeur": "400" }
+        ],
+        "besoins": [
+          { "picto": "people", "titre": "1 artiste", "detail": "2 avec l’option « grande illusion »" },
+          { "picto": "ruler", "titre": "Scène : min. 4 × 3,5 m", "detail": "Idéal : 7 × 5 m" },
+          { "picto": "sound", "titre": "Sonorisation", "detail": "Autonomie complète" },
+          { "picto": "bolt", "titre": "1 direct près de la scène", "detail": "Idéal : 1 direct de chaque côté" },
+          { "picto": "light", "titre": "Lumière", "detail": "Autonomie complète. Prévoir le noir, ou un début à 21 h en extérieur" },
+          { "picto": "van", "titre": "Citroën Berlingo", "detail": "Accès véhicule au plus près de la scène" }
+        ],
+        "disposition": {
+          "scene": "Scène · idéal 7 × 5 m",
+          "notes": ["Fond de scène · aucun passage derrière", "Public face à la scène · éviter les spectateurs sur les côtés"]
+        }
+      },
+      "tarifs": {
+        "titre": "Tarifs 2026 · hors décembre",
+        "spectacle": {
+          "libelle": "Spectacle de magie « Illusion »",
+          "description": "Spectacle familial avec fond de scène et sonorisation · 50 min, modulable",
+          "prix": "800 €",
+          "mentionPrix": "TTC",
+          "polaroid": "assets/polaroid-illusion-scene.jpg",
+          "inclus": [
+            { "libelle": "Lumières fixes et effets de fumée", "description": "Conseillé, sauf en plein soleil · −80 € si vous ne les souhaitez pas", "prix": "inclus" },
+            { "libelle": "Final en grande illusion", "description": "Un numéro en duo clôture le spectacle · −180 € si vous ne le souhaitez pas", "prix": "inclus" }
+          ],
+          "options": [
+            { "libelle": "Lumières interactives", "description": "Une ambiance différente à chaque tableau · conseillé en pénombre", "prix": "+ 100 €" },
+            { "libelle": "Deuxième grande illusion en duo", "prix": "+ 150 €" }
+          ]
+        },
+        "animations": {
+          "conditions": "En complément du spectacle · environ 1 h chacune · nombre d’enfants limité, contactez-moi",
+          "lignes": [
+            { "libelle": "Sculpture sur ballons", "prix": "130 €", "ancienPrix": "320 €", "polaroid": "assets/polaroid-ballons.jpg" },
+            { "libelle": "Bulles géantes", "description": "Environ 30 min", "prix": "180 €", "ancienPrix": "380 €", "polaroid": "assets/polaroid-bulles.jpg" },
+            { "libelle": "Atelier découverte", "description": "Des tours de magie que les enfants pourront refaire chez eux", "prix": "130 €", "ancienPrix": "350 €", "polaroid": "assets/polaroid-decouverte.jpg" }
+          ]
+        }
+      }
+    }
+  ]
+};
+
+/* Textures communes (fichiers de l'app, pas des données de Flo) */
+const TEXTURE = 'assets/texture-papier.jpg';
+
+/* =====================================================================
+   Outils
+   ===================================================================== */
+const OR = '#D8B46A', OR_PAPIER = '#A8823F', CREME = '#F6EEDD', PAPIER = '#F5EDDC', ENCRE = '#2A211A', ENCRE2 = '#4a3f35', GRIS = '#8a7c6c';
+
+/* Typographie française : espaces insécables (chiffre + unité, avant €:;!?», après «) */
+const typo = s => String(s ?? '').replace(/(\d) (?=[\d€%hmHM×x])/g, '$1 ').replace(/ ([€:;!?»])/g, ' $1').replace(/« /g, '« ').replace(/ × /g, ' × ');
+const esc = s => typo(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const maj = s => String(s ?? '').toLocaleUpperCase('fr-FR');
+const escBrut = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+/* Images : une référence est soit un chemin d'asset (« assets/… »), soit « img:<id> »
+   pour une image importée (Blob gardé dans IMAGES ; persistance IndexedDB à l'étape 3). */
+const IMAGES = new Map();   // id → { blob, url, nom }
+const IMAGE_VIDE = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"><rect width="400" height="300" fill="#e6ded0"/><text x="200" y="160" font-family="sans-serif" font-size="22" letter-spacing="4" fill="#8a7c6c" text-anchor="middle">PHOTO</text></svg>');
+function urlImage(ref){
+  if (!ref) return IMAGE_VIDE;
+  if (String(ref).startsWith('img:')) return IMAGES.get(ref.slice(4))?.url || IMAGE_VIDE;
+  return ref;
+}
+const img = ref => escBrut(urlImage(ref));
+
+/* Teintes dérivées de l'accent (même formule que les gabarits) */
+function teintes(hex){
+  const n = parseInt(String(hex).replace('#',''), 16), c = [(n>>16)&255, (n>>8)&255, n&255];
+  const mix = t => 'rgb(' + c.map(v => Math.round(v + (255 - v) * t)).join(',') + ')';
+  const dark = t => 'rgb(' + c.map(v => Math.round(v * (1 - t))).join(',') + ')';
+  return { accent: hex, soft: mix(.88), light: mix(.7), deep: dark(.42) };
+}
+const styleTeintes = p => { const t = teintes(p.accent); return `--accent:${t.accent};--soft:${t.soft};--light:${t.light};--deep:${t.deep}`; };
+
+const ETOILE = 'M12 0 L13.6 10.4 L24 12 L13.6 13.6 L12 24 L10.4 13.6 L0 12 L10.4 10.4 Z';
+const etoile = (taille, couleur = OR, opacite = 1) =>
+  `<svg width="${taille}" height="${taille}" viewBox="0 0 24 24" style="display:block;opacity:${opacite}"><path d="${ETOILE}" fill="${couleur}"/></svg>`;
+const etoilePos = (x, y, taille, opacite) => `<div class="etoile" style="left:${x}px;top:${y}px">${etoile(taille, OR, opacite)}</div>`;
+
+const PICTOS = {
+  people: '<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14.2c2.8.3 5 2.7 5 5.8"/>',
+  ruler:  '<rect x="2" y="8" width="20" height="8" rx="1"/><path d="M6 8v3M10 8v4M14 8v3M18 8v4"/>',
+  sound:  '<path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/><path d="M19 6a8.5 8.5 0 0 1 0 12"/>',
+  bolt:   '<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>',
+  light:  '<path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"/>',
+  van:    '<path d="M2 7h12v9H2z"/><path d="M14 10h4l3 3v3h-7z"/><circle cx="6" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/>',
+  clock:  '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/>',
+  screen: '<rect x="3" y="4" width="18" height="12" rx="1"/><path d="M8 20h8M12 16v4"/>',
+  table:  '<path d="M3 9h18"/><path d="M5 9v10M19 9v10"/><path d="M8 9V6h8v3"/>'
+};
+const picto = nom => `<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--deep)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display:block;flex-shrink:0">${PICTOS[nom] || PICTOS.people}</svg>`;
+
+const NOMBRES = ['', 'UNE', 'DEUX', 'TROIS', 'QUATRE', 'CINQ'];
+const videoCourte = url => String(url || '').replace(/^https?:\/\//, '').replace(/^www\./, '');
+/* « Florian Cohen » → « COHEN Florian » (en-tête administratif des tarifs) */
+function nomAdministratif(nom){
+  const m = String(nom || '').trim().split(/\s+/);
+  return m.length < 2 ? maj(nom) : maj(m.slice(1).join(' ')) + ' ' + m[0];
+}
+
+/* Morceaux communs */
+const cadreDore = () =>
+  `<div style="position:absolute;left:22px;top:22px;right:22px;bottom:22px;border:1px solid ${OR}"></div>
+   <div style="position:absolute;left:30px;top:30px;right:30px;bottom:30px;border:2px solid ${OR}"></div>`;
+
+const contactLigne = g => `${esc(g.nom)} « ${esc(g.nomScene)} » · ${esc(g.telephone)} · ${esc(g.email)}`;
+
+function medaillon(src, alt, taille, extraStyle, posImage = 'center'){
+  return `<div style="position:absolute;${extraStyle};padding:4px;border-radius:50%;background:${OR};box-shadow:0 10px 24px rgba(0,0,0,0.35)">
+    <img src="${img(src)}" alt="${esc(alt)}" style="width:${taille}px;height:${taille}px;border-radius:50%;object-fit:cover;object-position:${posImage};border:4px solid var(--deep)"></div>`;
+}
+
+/* Bandeau de tête + bas de page des documents « papier » */
+function enveloppePapier(g, p, surtitre, tailleTitre, corps){
+  return `<div class="page" style="${styleTeintes(p)};background:${PAPIER};color:${ENCRE}">
+  <img class="tex" src="${TEXTURE}" alt="" style="opacity:.45">
+  <div style="position:absolute;left:0;top:0;width:100%;height:182px;overflow:hidden;background:var(--deep)">
+    <img class="tex" src="${TEXTURE}" alt="" style="opacity:.55">
+    ${etoilePos(430,62,14,.8)}${etoilePos(520,140,10,.7)}${etoilePos(480,104,8,.6)}${etoilePos(560,52,8,.5)}
+  </div>
+  <div style="position:absolute;left:0;bottom:0;width:100%;height:74px;overflow:hidden;background:var(--deep)">
+    <img class="tex" src="${TEXTURE}" alt="" style="opacity:.55">
+  </div>
+  ${cadreDore()}
+  <div style="position:absolute;left:66px;right:250px;top:34px;height:148px;display:flex;align-items:center">
+    <div style="display:flex;flex-direction:column;gap:2px;width:100%;min-width:0">
+      <div style="font-family:'Cinzel',serif;font-size:14px;letter-spacing:0.38em;color:${OR}">${esc(maj(surtitre))}</div>
+      <h1 data-hmax="94" style="margin:0;font-family:'Abril Fatface',serif;font-weight:400;font-size:${tailleTitre}px;line-height:1;color:${CREME}">${esc(p.nom)}</h1>
+      <div style="display:flex;align-items:center;gap:12px;margin-top:4px">${etoile(9)}<span style="font-family:'Cinzel',serif;font-size:15px;letter-spacing:0.22em;color:${OR}">${esc(maj(p.sousTitre))}</span></div>
+    </div>
+  </div>
+  ${medaillon(p.photoPrincipale, `${g.nomScene} dans le spectacle ${p.nom}`, 150, 'right:62px;top:64px', '52% 22%')}
+  <div class="corps" style="position:relative;width:100%;height:100%;padding:196px 66px 86px;display:flex;flex-direction:column">
+    ${corps}
+  </div>
+  <div style="position:absolute;left:0;right:0;bottom:32px;height:42px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;color:${CREME}">
+    <div style="font-size:13px">${contactLigne(g)}</div>
+    <div style="font-family:'Cinzel',serif;font-size:16px;letter-spacing:0.16em;font-weight:700;color:${OR}">${esc(g.site)}</div>
+  </div>
+</div>`;
+}
+
+/* =====================================================================
+   1. Plaquette
+   ===================================================================== */
+function rendrePlaquette(g, p){
+  const versions = p.versions || [];
+  const blocInfo = (grow, titre, contenu, tailleTexte = 16) =>
+    `<div style="flex-grow:${grow};flex-basis:0;display:flex;flex-direction:column;align-items:center;gap:2px;padding:13px 8px;text-align:center">
+       <span style="font-family:'Cinzel',serif;font-size:12px;letter-spacing:0.24em;color:${OR}">${titre}</span>
+       <span style="font-size:${tailleTexte}px;line-height:1.35;font-weight:${tailleTexte === 16 ? 500 : 400}">${contenu}</span></div>`;
+  const sep = `<div style="width:1px;background:${OR}"></div>`;
+  const infos = [];
+  if (p.duree) infos.push(blocInfo(1, 'DURÉE', esc(p.duree)));
+  if (versions.length) infos.push(blocInfo(1.6, p.titreVersions ? esc(maj(p.titreVersions)) : (NOMBRES[versions.length] ? NOMBRES[versions.length] + ' ' : '') + (versions.length > 1 ? 'VERSIONS' : 'VERSION'),
+      versions.map(v => esc(v.nom) + (v.detail ? ' · ' + esc(v.detail) : '')).join('<br>'), 14));
+  if (p.video) infos.push(blocInfo(1, 'VIDÉO', `<span style="font-weight:500">${esc(videoCourte(p.video))}</span>`, 14));
+
+  return `<div class="page" style="${styleTeintes(p)};background:var(--deep);color:${CREME}">
+  <img class="tex" src="${TEXTURE}" alt="" style="opacity:.55">
+  ${etoilePos(90,118,18,.9)}${etoilePos(690,96,12,.7)}${etoilePos(650,206,22,.85)}${etoilePos(120,268,10,.6)}
+  ${etoilePos(560,62,9,.6)}${etoilePos(220,70,8,.5)}${etoilePos(70,700,12,.55)}${etoilePos(712,760,10,.5)}
+  ${cadreDore()}
+  <div class="corps" style="position:relative;width:100%;height:100%;padding:60px 66px 52px;display:flex;flex-direction:column;align-items:center">
+    <div style="font-family:'Cinzel',serif;font-size:14px;letter-spacing:0.42em;color:${OR}">${esc(maj(g.nomScene))} PRÉSENTE</div>
+    <h1 data-hmax="200" style="margin:6px 0 0;max-width:100%;font-family:'Abril Fatface',serif;font-weight:400;font-size:128px;line-height:1;color:${CREME};text-align:center">${esc(p.nom)}</h1>
+    <div style="display:flex;align-items:center;gap:14px;margin-top:6px">${etoile(10)}<span style="font-family:'Cinzel',serif;font-size:17px;letter-spacing:0.22em;color:${OR}">${esc(maj(p.sousTitre))}</span>${etoile(10)}</div>
+    <div style="position:relative;width:100%;margin-top:calc(28px*var(--esp))">
+      <img src="${img(p.photoPrincipale)}" alt="${esc(g.nomScene)} — ${esc(p.nom)}" style="width:100%;height:360px;object-fit:cover;object-position:center 28%;border-radius:16px;border:2px solid ${OR};box-shadow:0 18px 40px rgba(0,0,0,0.4)">
+      ${p.photoMedaillon ? `
+      <div style="position:absolute;right:-16px;bottom:-34px;padding:4px;border-radius:50%;background:${OR};box-shadow:0 10px 24px rgba(0,0,0,0.4)">
+        <img src="${img(p.photoMedaillon)}" alt="${esc(p.legendeMedaillon)}" style="width:148px;height:148px;border-radius:50%;object-fit:cover;border:4px solid var(--deep)">
+      </div>
+      ${p.legendeMedaillon ? `<div style="position:absolute;right:150px;bottom:-30px;font-family:'Cinzel',serif;font-size:12px;letter-spacing:0.2em;color:${OR}">${esc(maj(p.legendeMedaillon))}</div>` : ''}` : ''}
+    </div>
+    <div style="display:flex;gap:40px;margin-top:calc(48px*var(--esp))">
+      ${(g.distinctions || []).map(d => `<img src="${img(d.imageOr)}" alt="${esc(d.texte)}" style="height:54px">`).join('')}
+    </div>
+    <p style="margin:calc(20px*var(--esp)) 0 0;max-width:610px;text-align:center;font-size:16px;line-height:1.6">${esc(p.presentation)}</p>
+    ${infos.length ? `<div style="display:flex;margin-top:calc(24px*var(--esp));width:100%;border-top:1px solid ${OR};border-bottom:1px solid ${OR}">${infos.join(sep)}</div>` : ''}
+    <div style="flex-grow:1"></div>
+    <div style="font-size:13px;text-align:center">${contactLigne(g)}</div>
+    <div style="font-family:'Cinzel',serif;font-size:17px;letter-spacing:0.16em;color:${OR};margin-top:4px">${esc(g.site)}</div>
+  </div>
+</div>`;
+}
+
+/* =====================================================================
+   2. Fiche technique
+   ===================================================================== */
+function intertitre(texte){
+  return `<div style="display:flex;align-items:center;gap:12px;margin-top:calc(34px*var(--esp));margin-bottom:4px">${etoile(11, 'var(--deep)')}
+    <span style="font-family:'Cinzel',serif;font-size:15px;font-weight:700;letter-spacing:0.14em;color:var(--deep)">${esc(maj(texte))}</span>
+    <div style="flex-grow:1;height:2px;background:var(--deep)"></div></div>`;
+}
+
+function rendreFiche(g, p){
+  const f = p.fiche || {};
+  const chiffres = (f.chiffres || []).map(c =>
+    `<div style="flex-grow:1;flex-basis:0;display:flex;flex-direction:column;align-items:center;gap:2px;padding:12px 6px">
+      <span style="font-family:'Cinzel',serif;font-size:11.5px;letter-spacing:0.22em;font-weight:700;color:var(--deep)">${esc(maj(c.label))}</span>
+      <span style="font-family:'Abril Fatface',serif;font-size:30px;line-height:1.05;color:var(--deep)">${esc(c.valeur)}</span></div>`
+  ).join('<div style="width:1px;background:var(--deep)"></div>');
+
+  const besoins = (f.besoins || []).map(b =>
+    `<div style="display:flex;gap:14px;align-items:flex-start;padding:calc(16px*var(--esp)) 0;border-bottom:1px dotted ${OR_PAPIER}">${picto(b.picto)}
+      <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:15px;font-weight:600">${esc(b.titre)}</span>
+      ${b.detail ? `<span style="font-size:13.5px;line-height:1.4;color:${ENCRE2}">${esc(b.detail)}</span>` : ''}</div></div>`
+  ).join('');
+
+  const d = f.disposition?.afficher === false ? null : f.disposition, notes = d?.notes || [];
+  const public_ = Array.from({length: 24}, () => `<div style="height:10px;border-radius:5px;background:${OR_PAPIER};opacity:0.55"></div>`).join('');
+  const disposition = d ? `${intertitre('Disposition idéale')}
+    <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding-top:8px">
+      ${notes[0] ? `<span style="font-size:12px;letter-spacing:0.18em;color:${ENCRE2}">${esc(maj(notes[0]))}</span>` : ''}
+      <div style="width:320px;height:10px;background:var(--deep);border-radius:3px"></div>
+      <div style="width:320px;height:70px;border:1.5px solid var(--deep);border-radius:6px;background:var(--soft);display:flex;align-items:center;justify-content:center;font-size:13px">${esc(d.scene)}</div>
+      <div style="display:flex;gap:22px;align-items:center">
+        <span style="font-size:20px;color:${GRIS}">×</span>
+        <div style="display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:6px;width:240px">${public_}</div>
+        <span style="font-size:20px;color:${GRIS}">×</span></div>
+      ${notes.slice(1).map(n => `<span style="font-size:12px;color:${ENCRE2}">${esc(n)}</span>`).join('')}
+    </div>` : '';
+
+  const corps = `
+    ${chiffres ? `<div style="display:flex;margin-top:calc(52px*var(--esp));border-radius:12px;background:var(--soft);border:1.5px solid var(--deep)">${chiffres}</div>` : ''}
+    ${besoins ? intertitre('Besoins techniques') + `<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:34px">${besoins}</div>` : ''}
+    ${disposition}
+    <div style="flex-grow:1"></div>`;
+  return enveloppePapier(g, p, 'Fiche technique', 78, corps);
+}
+
+/* =====================================================================
+   3. Tarifs
+   ===================================================================== */
+/* Ligne avec pointillés jusqu'au prix */
+function ligneTarif(l){
+  const barre = l.ancienPrix ? `<span style="text-decoration:line-through;color:${GRIS};font-size:13.5px;margin-right:8px">${esc(l.ancienPrix)}</span>` : '';
+  return `<div style="padding:calc(8px*var(--esp)) 0">
+    <div style="display:flex;align-items:baseline;gap:10px"><span style="font-size:15px;font-weight:600">${esc(l.libelle)}</span>
+      <div class="pointilles"><svg width="100%" height="3"><line x1="1.5" y1="1.5" x2="100%" y2="1.5" stroke="${OR_PAPIER}" stroke-width="1.7" stroke-linecap="round" stroke-dasharray="0 4.5"/></svg></div>
+      <span style="white-space:nowrap">${barre}<span style="font-size:16px;font-weight:600;color:var(--deep)">${esc(l.prix)}</span></span></div>
+    ${l.description ? `<div style="font-size:12.5px;color:${ENCRE2};line-height:1.35;margin-top:1px">${esc(l.description)}</div>` : ''}</div>`;
+}
+
+/* Les polaroïds de Flo ont déjà leur cadre : on affiche l'image telle quelle */
+const vignette = (src, l, h, rot = 0) =>
+  `<img src="${img(src)}" alt="" style="width:${l}px;height:${h}px;flex-shrink:0;object-fit:cover;transform:rotate(${rot}deg);box-shadow:0 3px 8px rgba(0,0,0,0.25)">`;
+
+/* Groupe de lignes : si une ligne a un polaroïd, toutes gardent la place de la vignette pour rester alignées */
+function lignesTarif(lignes){
+  if (!lignes.some(l => l.polaroid)) return lignes.map(ligneTarif).join('');
+  return lignes.map(l => `<div style="display:flex;align-items:center;gap:14px;padding:calc(5px*var(--esp)) 0">
+    ${l.polaroid ? vignette(l.polaroid, 56, 51) : '<div style="width:56px;flex-shrink:0"></div>'}
+    <div style="flex-grow:1">${ligneTarif(l)}</div></div>`).join('');
+}
+
+function titrePartie(num, titre, sousTitre){
+  return `<div style="display:flex;align-items:center;gap:14px;margin-bottom:calc(10px*var(--esp))">
+    <div style="width:34px;height:34px;border-radius:50%;background:var(--deep);color:${CREME};display:flex;align-items:center;justify-content:center;font-family:'Abril Fatface',serif;font-size:18px;flex-shrink:0">${num}</div>
+    <div style="display:flex;flex-direction:column"><span style="font-family:'Cinzel',serif;font-size:18px;font-weight:700;letter-spacing:0.1em;color:var(--deep)">${esc(titre)}</span>
+    ${sousTitre ? `<span style="font-size:12.5px;color:${ENCRE2}">${esc(sousTitre)}</span>` : ''}</div></div>`;
+}
+
+const filetEtoile = () =>
+  `<div style="display:flex;align-items:center;justify-content:center;gap:12px;margin:calc(12px*var(--esp)) 0 calc(8px*var(--esp))">
+    <div style="width:120px;height:1px;background:${OR_PAPIER}"></div>${etoile(9, OR_PAPIER)}${etoile(13, OR_PAPIER)}${etoile(9, OR_PAPIER)}<div style="width:120px;height:1px;background:${OR_PAPIER}"></div></div>`;
+
+const sousTitreBloc = (t, mt) => `<div style="font-family:'Cinzel',serif;font-size:13px;font-weight:700;letter-spacing:0.16em;color:${OR_PAPIER};margin-top:calc(${mt}px*var(--esp))">${esc(t)}</div>`;
+
+function rendreTarifs(g, p){
+  const t = p.tarifs || {}, s = t.spectacle || {}, a = t.animations;
+  const inclus = s.inclus || [], options = s.options || [];
+
+  const spectacle = `
+    <div style="margin-top:calc(22px*var(--esp))">${titrePartie(1, 'Le spectacle', s.sousTitrePartie || 'Formule de base et options')}</div>
+    <div style="border:2px solid var(--deep);border-radius:16px;overflow:hidden;background:rgba(255,252,245,0.55)">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:20px;padding:14px 24px 14px 18px;background:var(--deep);color:${CREME}">
+        <div style="display:flex;align-items:center;gap:16px">
+          ${s.polaroid ? vignette(s.polaroid, 84, 76, -3) : ''}
+          <div style="display:flex;flex-direction:column;gap:3px">
+            <span style="font-family:'Cinzel',serif;font-size:19px;font-weight:700;letter-spacing:0.04em">${esc(s.libelle)}</span>
+            ${s.description ? `<span style="font-size:13.5px;max-width:330px">${esc(s.description)}</span>` : ''}</div></div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0">
+          ${s.ancienPrix ? `<span style="font-size:16px;text-decoration:line-through;opacity:.75;margin-bottom:2px">${esc(s.ancienPrix)}</span>` : ''}
+          <span style="font-family:'Abril Fatface',serif;font-size:${String(s.prix || '').length > 8 ? 30 : 44}px;line-height:1;color:#E8CC8C;white-space:nowrap">${esc(s.prix)}</span>
+          ${s.mentionPrix ? `<span style="font-family:'Cinzel',serif;font-size:11px;letter-spacing:0.24em">${esc(maj(s.mentionPrix))}</span>` : ''}</div>
+      </div>
+      ${inclus.length || options.length ? `<div style="padding:4px 24px 12px">
+        ${inclus.length ? sousTitreBloc(s.titreInclus || 'Inclus dans la formule', 12) + lignesTarif(inclus) : ''}
+        ${options.length ? sousTitreBloc(s.titreOptions || 'Options', inclus.length ? 8 : 12) + lignesTarif(options) : ''}
+      </div>` : ''}
+    </div>`;
+
+  let animations = '';
+  const lignes = a?.lignes || [];
+  if (lignes.length){
+    animations = `${filetEtoile()}
+    ${titrePartie(2, a.titre || 'Animations supplémentaires', a.conditions)}
+    <div style="border-radius:16px;background:var(--soft);padding:6px 24px 10px">
+      ${lignesTarif(lignes)}
+    </div>`;
+  }
+
+  const corps = `
+    <div style="margin-top:8px;padding-right:180px;font-size:12.5px;line-height:1.5;color:${ENCRE2}">
+      ${esc(nomAdministratif(g.nom))} · ${esc(g.statut)}<br>${esc(g.adresse)} · ${esc(g.codePostal)} ${esc(g.ville)}</div>
+    <div style="display:flex;gap:16px;margin-top:10px">${(g.distinctions || []).map(d => `<img src="${img(d.imageBrun)}" alt="${esc(d.texte)}" style="height:34px">`).join('')}</div>
+    ${spectacle}
+    ${animations}
+    <div style="display:flex;flex-direction:column;align-items:center;gap:4px;margin-top:calc(14px*var(--esp));text-align:center">
+      ${t.note ? `<span style="font-size:12.5px;font-weight:500;color:var(--deep)">${esc(t.note)}</span>` : ''}
+      ${g.mentionDeplacement ? `<span style="font-size:12.5px;font-style:italic;color:${ENCRE2}">${esc(g.mentionDeplacement)}</span>` : ''}
+      ${g.formulePolitesse ? `<span style="font-size:14px;font-style:italic">${esc(g.formulePolitesse)}</span>` : ''}</div>
+    <div style="flex-grow:1"></div>`;
+  return enveloppePapier(g, p, t.titre || 'Tarifs', 72, corps);
+}
+
+/* =====================================================================
+   Application
+   ===================================================================== */
+const DOCS = {
+  plaquette: { nom: 'Plaquette',       rendre: rendrePlaquette },
+  fiche:     { nom: 'Fiche technique', rendre: rendreFiche },
+  tarifs:    { nom: 'Tarifs',          rendre: rendreTarifs }
+};
+const ONGLETS = {
+  global:    { nom: 'Coordonnées' },
+  prestation:{ nom: 'Prestation',      doc: 'plaquette' },
+  fiche:     { nom: 'Fiche technique', doc: 'fiche' },
+  tarifs:    { nom: 'Tarifs',          doc: 'tarifs' }
+};
+const etat = { presta: DONNEES.prestations[0].id, doc: 'tous', onglet: 'prestation' };
+const $ = s => document.querySelector(s);
+/* aSauver() est défini dans la partie « Stockage » */
+
+function prestaCourante(){ return DONNEES.prestations.find(p => p.id === etat.presta) || DONNEES.prestations[0]; }
+const indexPresta = () => DONNEES.prestations.indexOf(prestaCourante());
+
+/* ---------- Accès aux données par chemin « prestations.0.tarifs.titre » ---------- */
+const lire = chemin => chemin.split('.').reduce((o, k) => o?.[k], DONNEES);
+function ecrire(chemin, valeur){
+  const k = chemin.split('.'), dernier = k.pop();
+  const parent = k.reduce((o, c, i) => (o[c] ??= /^\d+$/.test(k[i + 1] ?? dernier) ? [] : {}), DONNEES);
+  parent[dernier] = valeur;
+  aSauver();
+}
+
+/* =====================================================================
+   Aperçu
+   ===================================================================== */
+function afficher(){
+  const p = prestaCourante(), g = DONNEES.global;
+  const docs = etat.doc === 'tous' ? Object.keys(DOCS) : [etat.doc];
+  $('#scene').innerHTML = docs.map(k =>
+    `<div class="feuille-bloc"><div class="feuille-etiquette">${escBrut(maj(DOCS[k].nom))}</div>
+     <div class="feuille" data-doc="${k}">${DOCS[k].rendre(g, p)}</div></div>`).join('');
+  document.querySelectorAll('.onglets button').forEach(b => b.setAttribute('aria-pressed', b.dataset.doc === etat.doc));
+  $('#btnPdf').textContent = etat.doc === 'tous' ? 'Choisir un document à exporter' : `Exporter « ${DOCS[etat.doc].nom} » en PDF`;
+  $('#btnPdf').disabled = etat.doc === 'tous';
+  ajusterEchelle();
+  verifierDebordements();
+}
+let minuterie;
+const planifierApercu = () => { clearTimeout(minuterie); minuterie = setTimeout(afficher, 180); };
+
+/* Mise à l'échelle des pages pour tenir dans la zone d'aperçu */
+function ajusterEchelle(){
+  const zone = $('#scene'), n = etat.doc === 'tous' ? 3 : 1;
+  const dispo = zone.clientWidth - 40 - (n - 1) * 24;
+  let e = Math.min(1, dispo / (794 * n));
+  if (n === 3 && e < .42) e = Math.min(1, (zone.clientWidth - 40) / 794 * .6);   // trop étroit : on passe à la ligne
+  zone.style.setProperty('--echelle', Math.max(.25, e).toFixed(3));
+}
+
+/* Ajuste l'espacement vertical pour tenir sur une page A4, puis signale ce qui déborde encore */
+const ESPACEMENTS = [1, .9, .8, .7, .6, .5];
+let jeton = 0;
+async function verifierDebordements(){
+  const j = ++jeton;
+  await document.fonts.ready;
+  await Promise.all([...document.querySelectorAll('#scene img')].map(i => i.complete ? 0 : new Promise(r => { i.onload = i.onerror = r; })));
+  if (j !== jeton) return;
+  /* Titres longs : on réduit la taille jusqu'à tenir dans la largeur et la hauteur prévues */
+  document.querySelectorAll('.feuille h1[data-hmax]').forEach(h => {
+    let t = parseFloat(h.style.fontSize);
+    while (t > 28 && (h.scrollWidth > h.clientWidth + 1 || h.offsetHeight > +h.dataset.hmax)) h.style.fontSize = (t -= 2) + 'px';
+  });
+  const trop = [], serres = [];
+  document.querySelectorAll('.feuille').forEach(f => {
+    const page = f.querySelector('.page'), c = f.querySelector('.corps');
+    /* bas réel du contenu comparé à la limite (hauteur – marge basse), dans l'espace mis à l'échelle */
+    const deborde = () => {
+      const r = c.getBoundingClientRect(), z = r.height / 1123;
+      const limite = r.bottom - parseFloat(getComputedStyle(c).paddingBottom) * z;
+      return Math.max(...[...c.children].map(e => e.getBoundingClientRect().bottom)) > limite + 0.5;
+    };
+    let esp = ESPACEMENTS[0];
+    for (esp of ESPACEMENTS){ page.style.setProperty('--esp', esp); if (!deborde()) break; }
+    f.classList.toggle('debord', deborde());
+    if (deborde()) trop.push(DOCS[f.dataset.doc].nom);
+    else if (esp < 1) serres.push(`${DOCS[f.dataset.doc].nom} (${Math.round(esp * 100)} %)`);
+  });
+  $('#alerte').textContent =
+    (trop.length ? `⚠ Contenu trop long pour une page A4 : ${trop.join(', ')} (bordure orange). Raccourcissez les textes. ` : '') +
+    (serres.length ? `Espacement resserré automatiquement : ${serres.join(', ')}.` : '');
+}
+
+async function exporterPdf(){
+  if (etat.doc === 'tous') return;
+  const p = prestaCourante();
+  document.querySelectorAll('.feuille').forEach(f => f.classList.toggle('a-imprimer', f.dataset.doc === etat.doc));
+  await document.fonts.ready;
+  const titre = document.title;
+  document.title = `${p.nom} - ${DOCS[etat.doc].nom}`;   // nom de fichier proposé pour le PDF
+  window.print();
+  document.title = titre;
+}
+
+/* =====================================================================
+   Éditeur — composants
+   ===================================================================== */
+const PICTO_NOMS = { people: 'Artistes', ruler: 'Scène / dimensions', sound: 'Son', bolt: 'Électricité', light: 'Lumière', van: 'Véhicule', clock: 'Horaires', screen: 'Écran / vidéo', table: 'Table / mobilier' };
+
+function champ(label, chemin, o = {}){
+  const v = escBrut(lire(chemin) ?? '');
+  const attrs = `data-chemin="${chemin}" placeholder="${escBrut(o.exemple || '')}"`;
+  const saisie = o.long
+    ? `<textarea ${attrs} rows="${o.long}">${v}</textarea>`
+    : `<input type="text" ${attrs} value="${v}">`;
+  return `<label class="champ${o.classe ? ' ' + o.classe : ''}"><span>${label}${o.facultatif ? ' <i>facultatif</i>' : ''}</span>${saisie}${o.aide ? `<small>${o.aide}</small>` : ''}</label>`;
+}
+
+function champImage(label, chemin, o = {}){
+  const ref = lire(chemin);
+  return `<div class="champ champ-image${o.classe ? ' ' + o.classe : ''}"><span>${label}${o.facultatif ? ' <i>facultatif</i>' : ''}</span>
+    <div class="image-ligne">
+      <button type="button" class="miniature${o.polaroid ? ' polaroid' : ''}" data-action="image" data-chemin="${chemin}" title="Changer l'image">
+        ${ref ? `<img src="${img(ref)}" alt="">` : '<em>Aucune</em>'}</button>
+      <div class="image-boutons">
+        <button type="button" class="petit" data-action="image" data-chemin="${chemin}">Choisir…</button>
+        ${ref && o.facultatif ? `<button type="button" class="petit discret" data-action="retirer-image" data-chemin="${chemin}">Retirer</button>` : ''}
+      </div></div></div>`;
+}
+
+function champPicto(chemin){
+  const v = lire(chemin) || 'people';
+  return `<label class="champ"><span>Picto</span><div class="picto-ligne">
+    <span class="picto-apercu">${picto(v).replace(/var\(--deep\)/g, '#5a2a20')}</span>
+    <select data-chemin="${chemin}">${Object.entries(PICTO_NOMS).map(([k, n]) => `<option value="${k}"${k === v ? ' selected' : ''}>${n}</option>`).join('')}</select></div></label>`;
+}
+
+/* Liste d'éléments : ajout, suppression, réordonnancement */
+function liste(titre, chemin, rendreItem, modele, o = {}){
+  const items = lire(chemin) || [];
+  return `<div class="liste">
+    <div class="liste-titre">${titre} <span class="compte">${items.length}</span></div>
+    ${items.map((it, i) => `<div class="carte">
+      <div class="carte-tete"><span class="carte-num">${i + 1}</span>
+        <span class="carte-nom">${escBrut(o.nom ? o.nom(it) : '')}</span>
+        <button type="button" class="icone" data-action="monter" data-chemin="${chemin}" data-i="${i}" ${i === 0 ? 'disabled' : ''} title="Monter">↑</button>
+        <button type="button" class="icone" data-action="descendre" data-chemin="${chemin}" data-i="${i}" ${i === items.length - 1 ? 'disabled' : ''} title="Descendre">↓</button>
+        <button type="button" class="icone suppr" data-action="supprimer" data-chemin="${chemin}" data-i="${i}" title="Supprimer">✕</button></div>
+      <div class="carte-corps">${rendreItem(`${chemin}.${i}`, it, i)}</div></div>`).join('')}
+    <div class="ajouter-ligne">
+      <button type="button" class="ajouter" data-action="ajouter" data-chemin="${chemin}" data-modele='${escBrut(JSON.stringify(modele))}'>+ ${o.ajouter || 'Ajouter'}</button>
+      ${o.catalogue ? `<button type="button" class="ajouter catalogue" data-action="catalogue-ouvrir" data-chemin="${chemin}">☆ Depuis mes options…</button>` : ''}
+    </div>
+  </div>`;
+}
+
+const ligneTarifEditeur = c => `
+  ${champ('Libellé', c + '.libelle')}
+  ${champ('Description', c + '.description', { facultatif: true })}
+  <div class="rangee">${champ('Prix ou mention', c + '.prix', { exemple: '+ 100 €' })}${champ('Ancien prix barré', c + '.ancienPrix', { facultatif: true, exemple: '350 €' })}</div>
+  ${champImage('Vignette polaroïd', c + '.polaroid', { facultatif: true, polaroid: true })}
+  <div class="garder"><button type="button" class="petit discret" data-action="catalogue-garder" data-chemin="${c}">${dansCatalogue(lire(c)) ? '★ Mettre à jour dans mes options' : '☆ Garder dans mes options'}</button></div>`;
+
+const section = (titre, contenu, aide) => `<section class="bloc"><h2>${titre}</h2>${aide ? `<p class="aide">${aide}</p>` : ''}${contenu}</section>`;
+
+/* =====================================================================
+   Éditeur — onglets
+   ===================================================================== */
+function editeurGlobal(){
+  return section('Identité', `
+      <div class="rangee">${champ('Nom', 'global.nom')}${champ('Nom de scène', 'global.nomScene')}</div>
+      ${champ('Statut', 'global.statut')}`, 'Commun aux trois documents de toutes les prestations.')
+    + section('Adresse', `
+      ${champ('Adresse', 'global.adresse')}
+      <div class="rangee">${champ('Code postal', 'global.codePostal', { classe: 'etroit' })}${champ('Ville', 'global.ville')}</div>`)
+    + section('Contact', `
+      <div class="rangee">${champ('Téléphone', 'global.telephone')}${champ('E-mail', 'global.email')}</div>
+      ${champ('Site', 'global.site')}`)
+    + section('Distinctions', liste('Lauriers', 'global.distinctions', c => `
+      ${champ('Texte', c + '.texte', { aide: 'Utilisé comme texte alternatif ; le visuel vient des images.' })}
+      <div class="rangee">${champImage('Version or (plaquette)', c + '.imageOr')}${champImage('Version brune (fiche, tarifs)', c + '.imageBrun')}</div>`,
+      { texte: '', imageOr: '', imageBrun: '' }, { nom: d => d.texte, ajouter: 'Ajouter une distinction' }))
+    + section('Mentions communes', `
+      ${champ('Frais de déplacement', 'global.mentionDeplacement', { long: 2 })}
+      ${champ('Formule de politesse', 'global.formulePolitesse', { long: 2 })}`);
+}
+
+function editeurPrestation(P){
+  return `<div class="actions-presta">
+      <button type="button" class="petit" data-action="dupliquer">Dupliquer cette prestation</button>
+      <button type="button" class="petit" data-action="nouvelle">Nouvelle prestation</button>
+      <button type="button" class="petit danger" data-action="supprimer-presta">Supprimer</button></div>`
+    + section('Titre', `
+      ${champ('Nom', P + '.nom')}
+      ${champ('Sous-titre', P + '.sousTitre', { exemple: 'Spectacle de magie familial' })}`)
+    + section('Couleur d\'accent', roueHtml(), 'Les teintes foncée et claire sont dérivées automatiquement.')
+    + section('Photos', `
+      <div class="rangee">${champImage('Photo principale', P + '.photoPrincipale')}${champImage('Médaillon', P + '.photoMedaillon', { facultatif: true })}</div>
+      ${champ('Légende du médaillon', P + '.legendeMedaillon', { facultatif: true })}`)
+    + section('Présentation', `
+      ${champ('Texte de présentation', P + '.presentation', { long: 5 })}
+      <div class="rangee">${champ('Durée', P + '.duree', { exemple: '50 min', classe: 'etroit' })}${champ('Lien vidéo', P + '.video', { facultatif: true })}</div>`)
+    + section('Versions', champ('Titre du bloc', P + '.titreVersions', { facultatif: true, exemple: 'Deux versions', aide: 'Vide : « Deux versions », « Trois versions »… selon le nombre.' }) + liste('Versions', P + '.versions', c => `
+      <div class="rangee">${champ('Nom', c + '.nom', { classe: 'etroit' })}${champ('Détail', c + '.detail')}</div>`,
+      { nom: '', detail: '' }, { nom: v => v.nom, ajouter: 'Ajouter une version' }));
+}
+
+function editeurFiche(P){
+  const F = P + '.fiche', d = lire(F + '.disposition'), dVisible = d && d.afficher !== false;
+  return section('Chiffres clés', liste('Cases', F + '.chiffres', c => `
+      <div class="rangee">${champ('Intitulé', c + '.label')}${champ('Valeur', c + '.valeur', { classe: 'etroit' })}</div>`,
+      { label: '', valeur: '' }, { nom: x => x.label, ajouter: 'Ajouter une case' }), 'Durée, temps d’installation et de rangement, jauge… 4 cases conseillées.')
+    + section('Besoins techniques', liste('Besoins', F + '.besoins', c => `
+      <div class="rangee">${champPicto(c + '.picto')}${champ('Titre', c + '.titre')}</div>
+      ${champ('Détail', c + '.detail', { facultatif: true })}`,
+      { picto: 'people', titre: '', detail: '' }, { nom: b => b.titre, ajouter: 'Ajouter un besoin' }), 'Affichés sur deux colonnes : un nombre pair rend mieux.')
+    + section('Disposition idéale', `
+      <label class="case"><input type="checkbox" data-action="disposition" ${dVisible ? 'checked' : ''}> Afficher le schéma de disposition</label>
+      ${dVisible ? `${champ('Texte dans la scène', F + '.disposition.scene', { exemple: 'Scène · idéal 7 × 5 m' })}
+      ${champ('Note au-dessus (fond de scène)', F + '.disposition.notes.0', { facultatif: true })}
+      ${champ('Note sous le public', F + '.disposition.notes.1', { facultatif: true })}` : ''}`);
+}
+
+function editeurTarifs(P){
+  const T = P + '.tarifs', S = T + '.spectacle', A = T + '.animations';
+  return `<div class="actions-presta"><button type="button" class="petit" data-action="catalogue-ouvrir">☆ Mes options enregistrées (${(DONNEES.catalogue || []).length})</button></div>`
+    + section('En-tête', champ('Titre de la grille', T + '.titre', { exemple: 'Tarifs 2026 · hors décembre' }))
+    + section('① Le spectacle', `
+      ${champ('Sous-titre de la partie', S + '.sousTitrePartie', { exemple: 'Formule de base et options' })}
+      ${champ('Libellé', S + '.libelle')}
+      ${champ('Description', S + '.description', { long: 2, facultatif: true })}
+      <div class="rangee">${champ('Prix', S + '.prix', { exemple: '800 €' })}${champ('Ancien prix barré', S + '.ancienPrix', { facultatif: true, exemple: '1 200 €' })}${champ('Mention', S + '.mentionPrix', { exemple: 'TTC', classe: 'etroit', facultatif: true })}</div>
+      ${champImage('Polaroïd', S + '.polaroid', { facultatif: true, polaroid: true })}
+      <div class="rangee">${champ('Titre « inclus »', S + '.titreInclus', { exemple: 'Inclus dans la formule', facultatif: true })}${champ('Titre « options »', S + '.titreOptions', { exemple: 'Options', facultatif: true })}</div>
+      ${liste('Inclus dans la formule', S + '.inclus', ligneTarifEditeur, { libelle: '', description: '', prix: 'inclus' }, { nom: l => l.libelle, ajouter: 'Ajouter une ligne « inclus »', catalogue: true })}
+      ${liste('Options', S + '.options', ligneTarifEditeur, { libelle: '', description: '', prix: '+ 100 €' }, { nom: l => l.libelle, ajouter: 'Ajouter une option', catalogue: true })}`)
+    + section('② Animations supplémentaires', `
+      ${champ('Titre de la partie', A + '.titre', { exemple: 'Animations supplémentaires' })}
+      ${champ('Conditions', A + '.conditions', { long: 2, facultatif: true })}
+      ${liste('Animations', A + '.lignes', ligneTarifEditeur, { libelle: '', description: '', prix: '', ancienPrix: '', polaroid: null }, { nom: l => l.libelle, ajouter: 'Ajouter une animation', catalogue: true })}`,
+      'Bloc séparé du spectacle. Vide = la partie n\'apparaît pas.')
+    + section('Mention propre à cette grille', champ('Mention', T + '.note', { long: 2, facultatif: true, exemple: 'Tarifs estimatifs : ils peuvent varier selon la date, le nombre de personnes…' }),
+      'Affichée au-dessus des mentions communes (frais de déplacement, remerciements).');
+}
+
+function construireEditeur(){
+  const P = `prestations.${indexPresta()}`;
+  document.querySelectorAll('.onglets-ed button').forEach(b => b.setAttribute('aria-pressed', b.dataset.onglet === etat.onglet));
+  const contenu = { global: editeurGlobal, prestation: editeurPrestation, fiche: editeurFiche, tarifs: editeurTarifs }[etat.onglet](P);
+  const defil = $('#editeur-contenu').scrollTop;
+  $('#editeur-contenu').innerHTML = contenu;
+  $('#editeur-contenu').scrollTop = defil;
+  if (etat.onglet === 'prestation') initRoue();
+}
+
+function remplirPrestations(){
+  $('#selPresta').innerHTML = DONNEES.prestations.map(p => `<option value="${escBrut(p.id)}">${escBrut(p.nom || 'Sans nom')}</option>`).join('');
+  $('#selPresta').value = etat.presta;
+}
+
+/* =====================================================================
+   Éditeur — évènements
+   ===================================================================== */
+function surSaisie(e){
+  const el = e.target, chemin = el.dataset.chemin;
+  if (!chemin) return;
+  ecrire(chemin, el.value);
+  if (chemin.endsWith('.picto')) el.closest('.picto-ligne').querySelector('.picto-apercu').innerHTML = picto(el.value).replace(/var\(--deep\)/g, '#5a2a20');
+  if (/^prestations\.\d+\.nom$/.test(chemin)) remplirPrestations();
+  /* met à jour le nom affiché dans l'en-tête de la carte */
+  const carte = el.closest('.carte');
+  if (carte && /\.(libelle|label|titre|texte|nom)$/.test(chemin)) carte.querySelector('.carte-nom').textContent = el.value;
+  planifierApercu();
+}
+
+function surClic(e){
+  const b = e.target.closest('[data-action]');
+  if (!b || b.type === 'checkbox') return;
+  const { action, chemin } = b.dataset, i = +b.dataset.i;
+  const tab = chemin ? lire(chemin) : null;
+  switch (action){
+    case 'ajouter':   ecrire(chemin, [...(tab || []), JSON.parse(b.dataset.modele)]); break;
+    case 'supprimer': if (!confirm('Supprimer cet élément ?')) return; tab.splice(i, 1); aSauver(); break;
+    case 'monter':    [tab[i - 1], tab[i]] = [tab[i], tab[i - 1]]; aSauver(); break;
+    case 'descendre': [tab[i + 1], tab[i]] = [tab[i], tab[i + 1]]; aSauver(); break;
+    case 'image':     ouvrirBibliotheque(chemin); return;
+    case 'retirer-image': ecrire(chemin, null); break;
+    case 'dupliquer': {
+      const copie = structuredClone(prestaCourante());
+      copie.id = nouvelId(copie.nom); copie.nom = (copie.nom || '') + ' (copie)';
+      DONNEES.prestations.splice(indexPresta() + 1, 0, copie); etat.presta = copie.id; aSauver();
+      remplirPrestations(); break;
+    }
+    case 'nouvelle': {
+      const n = prestationVierge(); DONNEES.prestations.push(n); etat.presta = n.id; aSauver();
+      remplirPrestations(); break;
+    }
+    case 'supprimer-presta':
+      if (DONNEES.prestations.length < 2) { alert('Il faut garder au moins une prestation.'); return; }
+      if (!confirm(`Supprimer la prestation « ${prestaCourante().nom} » et ses trois documents ?`)) return;
+      DONNEES.prestations.splice(indexPresta(), 1); etat.presta = DONNEES.prestations[0].id; aSauver();
+      remplirPrestations(); break;
+    case 'catalogue-ouvrir': ouvrirCatalogue(chemin || null); return;
+    case 'catalogue-garder': garderDansCatalogue(lire(chemin)); break;
+    default: return;
+  }
+  construireEditeur(); afficher();
+}
+
+function surChangement(e){
+  if (e.target.dataset.action !== 'disposition') return;
+  const F = `prestations.${indexPresta()}.fiche`;
+  /* masquer ne supprime pas les textes : on peut réafficher le schéma tel quel */
+  if (!lire(F + '.disposition')) ecrire(F + '.disposition', { scene: 'Scène', notes: ['Fond de scène · aucun passage derrière', 'Public face à la scène'] });
+  ecrire(F + '.disposition.afficher', e.target.checked);
+  construireEditeur(); afficher();
+}
+
+const nouvelId = nom => (String(nom || 'prestation').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'prestation') + '-' + Date.now().toString(36);
+
+function prestationVierge(){
+  return {
+    id: nouvelId('nouvelle'), nom: 'Nouvelle prestation', sousTitre: 'Spectacle de magie', accent: '#1F4E8C',
+    photoPrincipale: null, photoMedaillon: null, legendeMedaillon: '', presentation: '', video: '', duree: '', versions: [],
+    fiche: { chiffres: [{ label: 'Spectacle', valeur: '' }, { label: 'Installation', valeur: '' }, { label: 'Rangement', valeur: '' }, { label: 'Jauge max.', valeur: '' }],
+             besoins: [], disposition: null },
+    tarifs: { titre: 'Tarifs ' + new Date().getFullYear(),
+              spectacle: { libelle: '', description: '', prix: '', mentionPrix: 'TTC', polaroid: null, inclus: [], options: [] },
+              animations: { conditions: '', lignes: [] } }
+  };
+}
+
+/* =====================================================================
+   Roue chromatique (teinte × saturation, curseur de luminosité)
+   ===================================================================== */
+const COULEURS_PREVUES = [['#A3162B', 'Rouge Illusion'], ['#1F4E8C', 'Bleu Close-up'], ['#2E6B45', 'Vert Lutins']];
+
+function hexVersHsl(hex){
+  const n = parseInt(hex.slice(1), 16), r = (n >> 16 & 255) / 255, g = (n >> 8 & 255) / 255, b = (n & 255) / 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b), l = (max + min) / 2, d = max - min;
+  let h = 0, s = 0;
+  if (d){
+    s = d / (1 - Math.abs(2 * l - 1));
+    h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    h = (h * 60 + 360) % 360;
+  }
+  return { h, s, l };
+}
+function hslVersRgb(h, s, l){
+  const c = (1 - Math.abs(2 * l - 1)) * s, x = c * (1 - Math.abs((h / 60) % 2 - 1)), m = l - c / 2;
+  const [r, g, b] = h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x] : h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x];
+  return [r, g, b].map(v => Math.round((v + m) * 255));
+}
+const hslVersHex = (h, s, l) => '#' + hslVersRgb(h, s, l).map(v => v.toString(16).padStart(2, '0')).join('').toUpperCase();
+
+function roueHtml(){
+  return `<div class="roue-bloc">
+    <div class="roue"><canvas width="176" height="176"></canvas><div class="roue-curseur"></div></div>
+    <div class="roue-droite">
+      <label class="champ"><span>Luminosité</span><input type="range" class="roue-lum" min="8" max="70" step="1"></label>
+      <label class="champ"><span>Code couleur</span><input type="text" class="roue-hex" maxlength="7" spellcheck="false"></label>
+      <div class="nuancier"><span>Teintes dérivées</span><div class="roue-teintes"></div></div>
+      <div class="nuancier"><span>Couleurs prévues</span><div>${COULEURS_PREVUES.map(([h, n]) => `<button type="button" class="pastille" data-hex="${h}" title="${n}" style="background:${h}"></button>`).join('')}</div></div>
+    </div></div>`;
+}
+
+function initRoue(){
+  const P = `prestations.${indexPresta()}.accent`;
+  const canvas = $('.roue canvas'), ctx = canvas.getContext('2d'), R = canvas.width / 2;
+  const curseur = $('.roue-curseur'), lum = $('.roue-lum'), hexIn = $('.roue-hex');
+  let hsl = hexVersHsl(lire(P) || '#A3162B');
+
+  function dessiner(){
+    const im = ctx.createImageData(canvas.width, canvas.height);
+    for (let y = 0; y < canvas.height; y++) for (let x = 0; x < canvas.width; x++){
+      const dx = x - R + .5, dy = y - R + .5, d = Math.hypot(dx, dy) / R;
+      if (d > 1) continue;
+      const [r, g, b] = hslVersRgb((Math.atan2(dy, dx) * 180 / Math.PI + 360) % 360, d, hsl.l);
+      const o = (y * canvas.width + x) * 4;
+      im.data[o] = r; im.data[o + 1] = g; im.data[o + 2] = b; im.data[o + 3] = d > .985 ? 255 * (1 - d) / .015 : 255;
+    }
+    ctx.putImageData(im, 0, 0);
+  }
+  function maj(source){
+    const hex = hslVersHex(hsl.h, hsl.s, hsl.l), a = hsl.h * Math.PI / 180;
+    curseur.style.left = (R + Math.cos(a) * hsl.s * R) + 'px';
+    curseur.style.top  = (R + Math.sin(a) * hsl.s * R) + 'px';
+    curseur.style.background = hex;
+    lum.value = Math.round(hsl.l * 100);
+    lum.style.background = `linear-gradient(90deg, ${hslVersHex(hsl.h, hsl.s, .08)}, ${hslVersHex(hsl.h, hsl.s, .4)}, ${hslVersHex(hsl.h, hsl.s, .7)})`;
+    if (source !== 'hex') hexIn.value = hex;
+    const t = teintes(hex);
+    $('.roue-teintes').innerHTML = [['Foncée', t.deep], ['Accent', hex], ['Claire', t.light], ['Pâle', t.soft]]
+      .map(([n, c]) => `<span class="teinte" style="background:${c}" title="${n}"></span>`).join('');
+    if (source){ ecrire(P, hex); planifierApercu(); }
+  }
+  function choisir(ev){
+    const r = canvas.getBoundingClientRect(), dx = ev.clientX - r.left - R, dy = ev.clientY - r.top - R;
+    hsl.h = (Math.atan2(dy, dx) * 180 / Math.PI + 360) % 360;
+    hsl.s = Math.min(1, Math.hypot(dx, dy) / R);
+    maj('roue');
+  }
+  canvas.onpointerdown = ev => { canvas.setPointerCapture(ev.pointerId); choisir(ev); canvas.onpointermove = choisir; };
+  canvas.onpointerup = () => { canvas.onpointermove = null; };
+  lum.oninput = () => { hsl.l = lum.value / 100; dessiner(); maj('lum'); };
+  hexIn.oninput = () => {
+    if (!/^#[0-9a-f]{6}$/i.test(hexIn.value)) return;
+    hsl = hexVersHsl(hexIn.value); dessiner(); maj('hex');
+  };
+  document.querySelectorAll('.pastille').forEach(b => b.onclick = () => { hsl = hexVersHsl(b.dataset.hex); dessiner(); maj('pastille'); });
+  dessiner(); maj();
+}
+
+/* =====================================================================
+   Catalogue « Mes options » : lignes de tarif réutilisables d'une prestation à l'autre.
+   On insère une COPIE : modifier le catalogue ne change pas les grilles déjà faites.
+   ===================================================================== */
+const CHAMPS_LIGNE = ['libelle', 'description', 'prix', 'ancienPrix', 'polaroid'];
+const copieLigne = l => Object.fromEntries(CHAMPS_LIGNE.filter(k => l[k]).map(k => [k, l[k]]));
+const cleLigne = l => String(l?.libelle || '').trim().toLocaleLowerCase('fr');
+const dansCatalogue = l => cleLigne(l) && (DONNEES.catalogue || []).some(c => cleLigne(c) === cleLigne(l));
+let cibleCatalogue = null;
+
+function garderDansCatalogue(ligne){
+  if (!cleLigne(ligne)) { alert('Donnez d’abord un libellé à cette ligne.'); return; }
+  DONNEES.catalogue ??= [];
+  const i = DONNEES.catalogue.findIndex(c => cleLigne(c) === cleLigne(ligne));
+  if (i >= 0){
+    if (!confirm(`« ${ligne.libelle} » existe déjà dans vos options. Remplacer par cette version ?`)) return;
+    DONNEES.catalogue[i] = { id: DONNEES.catalogue[i].id, ...copieLigne(ligne) };
+  } else DONNEES.catalogue.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 5), ...copieLigne(ligne) });
+  aSauver();
+  notifier(`« ${ligne.libelle} » est dans vos options.`);
+}
+
+function ouvrirCatalogue(chemin){
+  cibleCatalogue = chemin;
+  const titre = chemin ? { inclus: 'Ajouter aux lignes « inclus »', options: 'Ajouter aux options', lignes: 'Ajouter aux animations' }[chemin.split('.').pop()] : null;
+  $('#cat-titre').textContent = titre || 'Mes options enregistrées';
+  $('#cat-recherche').value = '';
+  remplirCatalogue();
+  $('#dlgCatalogue').showModal();
+  $('#cat-recherche').focus();
+}
+
+function remplirCatalogue(){
+  const q = $('#cat-recherche').value.trim().toLocaleLowerCase('fr');
+  const deja = cibleCatalogue ? (lire(cibleCatalogue) || []).map(cleLigne) : [];
+  const items = (DONNEES.catalogue || []).filter(c => !q || [c.libelle, c.description, c.prix].join(' ').toLocaleLowerCase('fr').includes(q));
+  $('#cat-liste').innerHTML = items.length ? items.map(c => `<div class="cat-item">
+      ${c.polaroid ? `<img src="${img(c.polaroid)}" alt="">` : '<span class="cat-sans"></span>'}
+      <div class="cat-texte"><b>${escBrut(c.libelle)}</b>${c.description ? `<small>${escBrut(c.description)}</small>` : ''}</div>
+      <div class="cat-prix">${c.ancienPrix ? `<s>${escBrut(c.ancienPrix)}</s> ` : ''}${escBrut(c.prix || '')}</div>
+      ${cibleCatalogue ? `<button type="button" class="petit${deja.includes(cleLigne(c)) ? ' fait' : ''}" data-cat="inserer" data-id="${c.id}">${deja.includes(cleLigne(c)) ? '✓ Déjà présente' : 'Ajouter'}</button>` : ''}
+      <button type="button" class="icone suppr" data-cat="supprimer" data-id="${c.id}" title="Retirer de mes options">✕</button>
+    </div>`).join('')
+    : `<p class="aide">${q ? 'Aucune option ne correspond.' : 'Aucune option enregistrée. Utilisez « ☆ Garder dans mes options » sous une ligne de tarif.'}</p>`;
+}
+
+function surClicCatalogue(e){
+  const b = e.target.closest('[data-cat]');
+  if (!b) return;
+  const i = DONNEES.catalogue.findIndex(c => c.id === b.dataset.id), item = DONNEES.catalogue[i];
+  if (b.dataset.cat === 'inserer'){
+    if (b.classList.contains('fait') && !confirm('Cette ligne est déjà dans la liste. L’ajouter une seconde fois ?')) return;
+    ecrire(cibleCatalogue, [...(lire(cibleCatalogue) || []), copieLigne(item)]);
+  } else {
+    if (!confirm(`Retirer « ${item.libelle} » de vos options ? (Les grilles qui l’utilisent ne changent pas.)`)) return;
+    DONNEES.catalogue.splice(i, 1); aSauver();
+  }
+  remplirCatalogue(); construireEditeur(); afficher();
+}
+
+let minuterieNotif;
+function notifier(texte){
+  const n = $('#notif'); n.textContent = texte; n.classList.add('visible');
+  clearTimeout(minuterieNotif); minuterieNotif = setTimeout(() => n.classList.remove('visible'), 2600);
+}
+
+/* =====================================================================
+   Bibliothèque d'images
+   ===================================================================== */
+const ASSETS = ['assets/illusion-scene.jpg', 'assets/illusion-beige.jpg', 'assets/polaroid-illusion-scene.jpg',
+  'assets/polaroid-ballons.jpg', 'assets/polaroid-bulles.jpg', 'assets/polaroid-decouverte.jpg',
+  'assets/laurier-monde-or.png', 'assets/laurier-france-or.png', 'assets/laurier-monde-brun.png', 'assets/laurier-france-brun.png'];
+let cheminImage = null;
+
+function ouvrirBibliotheque(chemin){
+  cheminImage = chemin;
+  const actuelle = lire(chemin);
+  const convertis = new Set([...IMAGES.values()].map(i => i.source));
+  const refs = [...[...IMAGES.keys()].reverse().map(id => 'img:' + id), ...ASSETS.filter(a => !convertis.has(a))];
+  $('#biblio-grille').innerHTML = refs.map(ref => {
+    const nom = ref.startsWith('img:') ? IMAGES.get(ref.slice(4)).nom : ref.replace('assets/', '');
+    return `<button type="button" class="biblio-item${ref === actuelle ? ' actif' : ''}" data-ref="${escBrut(ref)}" title="${escBrut(nom)}">
+      <img src="${img(ref)}" alt="" loading="lazy"><span>${escBrut(nom)}</span></button>`;
+  }).join('');
+  $('#dlgImages').showModal();
+}
+
+/* Les grandes photos sont réduites (2400 px max) pour garder l'app légère ; une page A4 n'en demande pas plus */
+async function preparerImage(fichier){
+  const MAX = 2400;
+  try {
+    const bmp = await createImageBitmap(fichier), grand = Math.max(bmp.width, bmp.height);
+    if (grand <= MAX) { bmp.close?.(); return fichier; }
+    const k = MAX / grand, c = document.createElement('canvas');
+    c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+    c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height); bmp.close?.();
+    const type = fichier.type === 'image/png' ? 'image/png' : 'image/jpeg';
+    return await new Promise(r => c.toBlob(r, type, .9));
+  } catch { return fichier; }
+}
+
+async function importerImages(fichiers){
+  let derniere = null;
+  for (const f of fichiers){
+    if (!f.type.startsWith('image/')) continue;
+    const blob = await preparerImage(f), id = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+    IMAGES.set(id, { blob, url: URL.createObjectURL(blob), nom: f.name });
+    await bdEcrire('images', id, { blob, nom: f.name });
+    derniere = 'img:' + id;
+  }
+  return derniere;
+}
+
+function choisirImage(ref){
+  ecrire(cheminImage, ref);
+  $('#dlgImages').close();
+  construireEditeur(); afficher();
+}
+
+/* =====================================================================
+   Stockage : IndexedDB (données + images) et sauvegarde fichier
+   ===================================================================== */
+const BD_NOM = 'supports-mr-triton';
+let bd;
+function ouvrirBd(){
+  return bd ??= new Promise((ok, ko) => {
+    const req = indexedDB.open(BD_NOM, 1);
+    req.onupgradeneeded = () => { const b = req.result; b.createObjectStore('donnees'); b.createObjectStore('images'); };
+    req.onsuccess = () => ok(req.result);
+    req.onerror = () => ko(req.error);
+  });
+}
+async function bdTransaction(magasin, mode, action){
+  const b = await ouvrirBd();
+  return new Promise((ok, ko) => {
+    const t = b.transaction(magasin, mode), m = t.objectStore(magasin), req = action(m);
+    t.oncomplete = () => ok(req?.result);
+    t.onerror = t.onabort = () => ko(t.error);
+  });
+}
+const bdLire   = (magasin, cle) => bdTransaction(magasin, 'readonly', m => m.get(cle));
+const bdEcrire = (magasin, cle, v) => bdTransaction(magasin, 'readwrite', m => m.put(v, cle));
+const bdTout   = magasin => bdTransaction(magasin, 'readonly', m => {
+  const res = []; const req = m.openCursor();
+  req.onsuccess = () => { const c = req.result; if (c) { res.push([c.key, c.value]); c.continue(); } };
+  return { get result(){ return res; } };
+});
+
+/* ---------- Enregistrement automatique ---------- */
+let sauvegardeEnAttente = false, minuterieSauvegarde;
+function aSauver(){
+  DONNEES.derniereModif = Date.now();
+  sauvegardeEnAttente = true;
+  etatSauvegarde('attente');
+  clearTimeout(minuterieSauvegarde);
+  minuterieSauvegarde = setTimeout(sauverMaintenant, 600);
+}
+async function sauverMaintenant(){
+  clearTimeout(minuterieSauvegarde);
+  sauvegardeEnAttente = false;
+  try {
+    await bdEcrire('donnees', 'courant', structuredClone(DONNEES));
+    if (!sauvegardeEnAttente) etatSauvegarde('ok');
+  } catch (err) {
+    sauvegardeEnAttente = true;
+    etatSauvegarde('erreur');
+    console.error(err);
+  }
+}
+let dernierExport = 0;
+const nonExporte = () => (DONNEES.derniereModif || 0) > dernierExport;
+const quandFr = t => new Date(t).toLocaleString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+function etatSauvegarde(e){
+  $('#btnSauvegarde').classList.toggle('a-exporter', nonExporte());
+  $('#btnSauvegarde').title = nonExporte() ? 'Modifications pas encore exportées' : '';
+  const el = $('#etatSauvegarde');
+  el.dataset.etat = e;
+  el.textContent = { attente: 'Enregistrement…', ok: '✓ Enregistré', erreur: '⚠ Échec de l’enregistrement' }[e];
+}
+
+/* ---------- Chargement au démarrage ---------- */
+async function chargerStockage(){
+  try {
+    navigator.storage?.persist?.();   // demande au navigateur de ne pas effacer ces données
+    for (const [id, v] of await bdTout('images'))
+      IMAGES.set(id, { blob: v.blob, url: URL.createObjectURL(v.blob), nom: v.nom, source: v.source });
+    dernierExport = await bdLire('donnees', 'dernierExport') || 0;
+    const enregistre = await bdLire('donnees', 'courant');
+    if (enregistre) DONNEES = enregistre;
+    else { await convertirAssets(); await bdEcrire('donnees', 'courant', structuredClone(DONNEES)); }
+    etat.presta = DONNEES.prestations[0]?.id;
+    etatSauvegarde('ok');
+  } catch (err) {
+    console.error(err);
+    $('#etatSauvegarde').dataset.etat = 'erreur';
+    $('#etatSauvegarde').textContent = '⚠ Stockage indisponible : pensez à exporter';
+  }
+}
+
+/* Premier lancement : les images d'exemple (assets/) deviennent des images de l'app,
+   pour que la sauvegarde fichier soit complète et autonome. */
+async function convertirAssets(){
+  const refs = new Set();
+  JSON.stringify(DONNEES, (k, v) => { if (typeof v === 'string' && v.startsWith('assets/')) refs.add(v); return v; });
+  const correspondance = {};
+  for (const ref of refs){
+    /* déjà convertie (ex. lors d'un ajout de prestations) : on réutilise l'image */
+    const existante = [...IMAGES].find(([, v]) => v.source === ref);
+    if (existante) { correspondance[ref] = 'img:' + existante[0]; continue; }
+    try {
+      const rep = await fetch(ref);
+      if (!rep.ok) continue;
+      const blob = await rep.blob(), id = 'a-' + ref.replace(/^assets\/|\.\w+$/g, '');
+      await bdEcrire('images', id, { blob, nom: ref.replace('assets/', ''), source: ref });
+      IMAGES.set(id, { blob, url: URL.createObjectURL(blob), nom: ref.replace('assets/', ''), source: ref });
+      correspondance[ref] = 'img:' + id;
+    } catch { /* ouverture en file:// : on garde le chemin */ }
+  }
+  DONNEES = JSON.parse(JSON.stringify(DONNEES), (k, v) => correspondance[v] ?? v);
+}
+
+/* ---------- Sauvegarde fichier (export / import) ---------- */
+const FORMAT = 'supports-mr-triton';
+const blobVersDataUrl = b => new Promise((ok, ko) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = () => ko(r.error); r.readAsDataURL(b); });
+
+async function ouvrirSauvegarde(){
+  const dernier = await bdLire('donnees', 'dernierExport').catch(() => null);
+  let info = 'Aucun fichier de sauvegarde exporté pour l’instant.';
+  if (dernier){
+    const jours = Math.floor((Date.now() - dernier) / 864e5);
+    info = `Dernier export : ${new Date(dernier).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}`
+      + (jours === 0 ? ' (aujourd’hui)' : ` (il y a ${jours} jour${jours > 1 ? 's' : ''})`) + '.';
+  }
+  $('#infoExport').textContent = info
+    + (DONNEES.derniereModif ? ` Dernière modification sur cet appareil : ${quandFr(DONNEES.derniereModif)}.` : '')
+    + (nonExporte() ? ' ⚠ Ces modifications ne sont pas encore exportées.' : '');
+  const nbImages = IMAGES.size;
+  $('#infoContenu').textContent = `${DONNEES.prestations.length} prestation${DONNEES.prestations.length > 1 ? 's' : ''}, `
+    + `${(DONNEES.catalogue || []).length} option${(DONNEES.catalogue || []).length > 1 ? 's' : ''} enregistrée${(DONNEES.catalogue || []).length > 1 ? 's' : ''}, `
+    + `${nbImages} image${nbImages > 1 ? 's' : ''}.`;
+  $('#dlgSauvegarde').showModal();
+}
+
+async function exporterSauvegarde(){
+  const b = $('#btnExporter'); b.disabled = true; b.textContent = 'Préparation…';
+  try {
+    if (sauvegardeEnAttente) await sauverMaintenant();
+    const images = {};
+    for (const [id, v] of IMAGES) images[id] = { nom: v.nom, source: v.source, data: await blobVersDataUrl(v.blob) };
+    const fichier = { format: FORMAT, version: 1, date: new Date().toISOString(), donnees: DONNEES, images };
+    const url = URL.createObjectURL(new Blob([JSON.stringify(fichier)], { type: 'application/json' }));
+    const a = Object.assign(document.createElement('a'), { href: url, download: `supports-mr-triton-${new Date().toLocaleString('sv-SE').slice(0, 16).replace(' ', '-').replace(':', 'h')}.json` });
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+    dernierExport = Date.now();
+    await bdEcrire('donnees', 'dernierExport', dernierExport);
+    etatSauvegarde('ok');
+    $('#dlgSauvegarde').close();
+    notifier('Sauvegarde exportée dans vos téléchargements.');
+  } catch (err) {
+    console.error(err); alert('L’export a échoué : ' + err.message);
+  } finally { b.disabled = false; b.textContent = 'Exporter une sauvegarde'; }
+}
+
+async function importerSauvegarde(fichier){
+  let contenu;
+  try { contenu = JSON.parse(await fichier.text()); } catch { alert('Ce fichier n’est pas une sauvegarde lisible.'); return; }
+  if (contenu?.format !== FORMAT || !contenu.donnees?.prestations){ alert('Ce fichier n’est pas une sauvegarde des supports commerciaux.'); return; }
+  if (!contenu.donnees.global){ alert('Ce fichier ne contient que des prestations : utilisez « Ajouter des prestations depuis un fichier… ».'); return; }
+  const n = contenu.donnees.prestations.length, quand = contenu.date ? new Date(contenu.date).toLocaleDateString('fr-FR') : '?';
+  const modifFichier = contenu.donnees.derniereModif || Date.parse(contenu.date) || 0, modifIci = DONNEES.derniereModif || 0;
+  let message = `Importer la sauvegarde du ${quand} (${n} prestation${n > 1 ? 's' : ''}) ?\n\nToutes les données de cet appareil seront remplacées.`;
+  if (modifIci > modifFichier)
+    message = `⚠ ATTENTION : cette sauvegarde est PLUS ANCIENNE que les données de cet appareil.\n\n`
+      + `Sauvegarde : modifiée le ${quandFr(modifFichier)}\nCet appareil : modifié le ${quandFr(modifIci)}\n\n`
+      + `L’importer effacera les modifications faites ici depuis. Continuer quand même ?`;
+  else if (nonExporte())
+    message += `\n\nDes modifications faites ici n’ont pas été exportées : elles seront perdues.`;
+  if (!confirm(message)) return;
+  try {
+    const nouvelles = new Map();
+    for (const [id, v] of Object.entries(contenu.images || {})){
+      const blob = await (await fetch(v.data)).blob();
+      nouvelles.set(id, { blob, nom: v.nom, source: v.source });
+    }
+    await bdTransaction('images', 'readwrite', m => m.clear());
+    for (const [id, v] of nouvelles) await bdEcrire('images', id, v);
+    await bdEcrire('donnees', 'courant', contenu.donnees);
+    for (const v of IMAGES.values()) URL.revokeObjectURL(v.url);
+    IMAGES.clear();
+    for (const [id, v] of nouvelles) IMAGES.set(id, { ...v, url: URL.createObjectURL(v.blob) });
+    DONNEES = contenu.donnees;
+    etat.presta = DONNEES.prestations[0]?.id;
+    sauvegardeEnAttente = false; etatSauvegarde('ok');
+    $('#dlgSauvegarde').close();
+    remplirPrestations(); construireEditeur(); afficher();
+    notifier('Sauvegarde importée.');
+  } catch (err) {
+    console.error(err); alert('L’import a échoué : ' + err.message);
+  }
+}
+
+async function ajouterDepuisFichier(fichier){
+  let contenu;
+  try { contenu = JSON.parse(await fichier.text()); } catch { alert('Ce fichier n’est pas lisible.'); return; }
+  if (contenu?.format !== FORMAT || !contenu.donnees?.prestations){ alert('Ce fichier n’est pas une sauvegarde des supports commerciaux.'); return; }
+  const arrivees = contenu.donnees.prestations;
+  const noms = arrivees.map(p => '• ' + p.nom).join('\n');
+  if (!confirm(`Ajouter ces ${arrivees.length} prestation(s) à vos données ?\n\n${noms}\n\nRien de ce que vous avez déjà ne sera modifié.`)) return;
+  try {
+    if (sauvegardeEnAttente) await sauverMaintenant();
+    for (const [id, v] of Object.entries(contenu.images || {})){
+      if (IMAGES.has(id)) continue;
+      const blob = await (await fetch(v.data)).blob();
+      await bdEcrire('images', id, { blob, nom: v.nom, source: v.source });
+      IMAGES.set(id, { blob, nom: v.nom, source: v.source, url: URL.createObjectURL(blob) });
+    }
+    const ids = new Set(DONNEES.prestations.map(p => p.id));
+    for (const p of arrivees){
+      if (ids.has(p.id)) { p.id = nouvelId(p.nom); p.nom += ' (importée)'; }
+      DONNEES.prestations.push(p);
+    }
+    DONNEES.catalogue ??= [];
+    DONNEES.derniereModif = Date.now();
+    let options = 0;
+    for (const c of contenu.donnees.catalogue || [])
+      if (!dansCatalogue(c)) { DONNEES.catalogue.push(c); options++; }
+    await convertirAssets();   // les chemins « assets/… » éventuels réutilisent vos images existantes
+    await sauverMaintenant();
+    etat.presta = arrivees[0].id;
+    $('#dlgSauvegarde').close();
+    remplirPrestations(); construireEditeur(); afficher();
+    notifier(`${arrivees.length} prestation(s) et ${options} option(s) ajoutées.`);
+  } catch (err) {
+    console.error(err); alert('L’ajout a échoué : ' + err.message);
+  }
+}
+
+/* =====================================================================
+   Démarrage
+   ===================================================================== */
+async function init(){
+  /* ?impression : rendu de test avec les données d'exemple, sans stockage (export PDF automatisé) */
+  const qi = new URLSearchParams(location.search);
+  if (qi.has('impression')){
+    etatSauvegarde('ok');
+    /* &donnees=fichier.json&presta=id : vérifier le rendu de prestations à importer */
+    if (qi.get('donnees')){
+      const f = await (await fetch(qi.get('donnees'))).json();
+      for (const [id, v] of Object.entries(f.images || {})){
+        const blob = await (await fetch(v.data)).blob();
+        IMAGES.set(id, { blob, nom: v.nom, url: URL.createObjectURL(blob) });
+      }
+      DONNEES.prestations.push(...f.donnees.prestations);
+    }
+    if (qi.get('presta')) etat.presta = qi.get('presta');
+  } else await chargerStockage();
+  remplirPrestations();
+  $('#selPresta').onchange = e => { etat.presta = e.target.value; construireEditeur(); afficher(); };
+  document.querySelectorAll('.onglets button').forEach(b => b.onclick = () => { etat.doc = b.dataset.doc; afficher(); });
+  document.querySelectorAll('.onglets-ed button').forEach(b => b.onclick = () => {
+    etat.onglet = b.dataset.onglet;
+    if (ONGLETS[etat.onglet].doc && etat.doc !== 'tous') etat.doc = ONGLETS[etat.onglet].doc;
+    $('#editeur-contenu').scrollTop = 0;
+    construireEditeur(); afficher();
+  });
+  $('#btnPdf').onclick = exporterPdf;
+  $('#btnSauvegarde').onclick = ouvrirSauvegarde;
+  $('#btnExporter').onclick = exporterSauvegarde;
+  $('#fichierSauvegarde').onchange = e => { const f = e.target.files[0]; e.target.value = ''; if (f) importerSauvegarde(f); };
+  $('#fichierAjout').onchange = e => { const f = e.target.files[0]; e.target.value = ''; if (f) ajouterDepuisFichier(f); };
+  $('#dlgSauvegarde').addEventListener('click', e => { if (e.target === $('#dlgSauvegarde')) $('#dlgSauvegarde').close(); });
+  const ed = $('#editeur-contenu');
+  ed.addEventListener('input', surSaisie);
+  ed.addEventListener('click', surClic);
+  ed.addEventListener('change', surChangement);
+
+  $('#cat-liste').onclick = surClicCatalogue;
+  $('#cat-recherche').oninput = remplirCatalogue;
+  $('#dlgCatalogue').addEventListener('click', e => { if (e.target === $('#dlgCatalogue')) $('#dlgCatalogue').close(); });
+  $('#biblio-grille').onclick = e => { const b = e.target.closest('.biblio-item'); if (b) choisirImage(b.dataset.ref); };
+  $('#biblio-fichier').onchange = async e => { const ref = await importerImages(e.target.files); e.target.value = ''; if (ref) choisirImage(ref); };
+  $('#dlgImages').addEventListener('click', e => { if (e.target === $('#dlgImages')) $('#dlgImages').close(); });
+  /* glisser-déposer une image sur la bibliothèque */
+  $('#dlgImages').addEventListener('dragover', e => e.preventDefault());
+  $('#dlgImages').addEventListener('drop', async e => { e.preventDefault(); const ref = await importerImages(e.dataTransfer.files); if (ref) choisirImage(ref); });
+
+  window.addEventListener('resize', () => { ajusterEchelle(); });
+  window.addEventListener('beforeunload', e => { if (sauvegardeEnAttente) { sauverMaintenant(); e.preventDefault(); e.returnValue = ''; } });
+  document.addEventListener('visibilitychange', () => { if (document.hidden && sauvegardeEnAttente) sauverMaintenant(); });
+
+  /* Paramètres d'URL : ?doc=tarifs, ?impression (voir plus haut) */
+  const q = new URLSearchParams(location.search);
+  if (DOCS[q.get('doc')]) etat.doc = q.get('doc');
+  if (q.has('impression')) document.body.classList.add('sans-editeur');
+  construireEditeur();
+  afficher();
+  if (q.has('impression')) document.querySelectorAll('.feuille').forEach(f => f.classList.add('a-imprimer'));
+}
+init();
+/* Hors connexion (uniquement en ligne, pas en ouverture directe du fichier) */
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
+</script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+# Seuls l’app et ses images de base sont publiés (dépôt public).
+/*
+!/.gitignore
+!/index.html
+!/manifest.json
+!/sw.js
+!/icons/
+!/assets/
