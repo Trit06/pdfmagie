@@ -778,8 +778,7 @@ function afficher(){
     `<div class="feuille-bloc"><div class="feuille-etiquette">${escBrut(maj(DOCS[k].nom))}</div>
      <div class="feuille" data-doc="${k}">${DOCS[k].rendre(g, p)}</div></div>`).join('');
   document.querySelectorAll('.onglets button').forEach(b => b.setAttribute('aria-pressed', b.dataset.doc === etat.doc));
-  $('#btnPdf').textContent = etat.doc === 'tous' ? 'Choisir un document à exporter' : `Exporter « ${DOCS[etat.doc].nom} » en PDF`;
-  $('#btnPdf').disabled = etat.doc === 'tous';
+  $('#btnPdf').textContent = etat.doc === 'tous' ? 'Exporter les 3 PDF' : `Exporter « ${DOCS[etat.doc].nom} » en PDF`;
   ajusterEchelle();
   verifierDebordements();
 }
@@ -862,15 +861,26 @@ async function verifierDebordements(){
     (serres.length ? `Ajusté automatiquement : ${serres.join(' · ')}.` : '');
 }
 
+/* Une fenêtre d'impression par document (un PDF = un document).
+   « Les trois » : les trois fenêtres s'ouvrent l'une après l'autre, chacune avec son nom de fichier. */
+function imprimerDocument(k){
+  return new Promise(fini => {
+    const p = prestaCourante(), titre = document.title;
+    document.querySelectorAll('.feuille').forEach(f => f.classList.toggle('a-imprimer', f.dataset.doc === k));
+    document.title = `${p.nom} - ${DOCS[k].numero} ${DOCS[k].nom}`;   // nom de fichier proposé : « Illusion - 01 Plaquette »
+    let fait = false;
+    const apres = () => { if (fait) return; fait = true; document.title = titre; setTimeout(fini, 400); };
+    window.addEventListener('afterprint', apres, { once: true });
+    window.print();
+  });
+}
+
 async function exporterPdf(){
-  if (etat.doc === 'tous') return;
-  const p = prestaCourante();
-  document.querySelectorAll('.feuille').forEach(f => f.classList.toggle('a-imprimer', f.dataset.doc === etat.doc));
   await document.fonts.ready;
-  const titre = document.title;
-  document.title = `${p.nom} - ${DOCS[etat.doc].numero} ${DOCS[etat.doc].nom}`;   // nom de fichier proposé : « Illusion - 01 Plaquette »
-  window.print();
-  document.title = titre;
+  if (etat.doc !== 'tous') return imprimerDocument(etat.doc);
+  notifier('3 fenêtres d’impression vont s’ouvrir l’une après l’autre : enregistrez chacune en PDF.');
+  await new Promise(r => setTimeout(r, 900));
+  for (const k of Object.keys(DOCS)) await imprimerDocument(k);
 }
 
 /* =====================================================================
