@@ -179,6 +179,7 @@ button.petit.danger{color:#9b2335;border-color:#d9a8a8}
 @page{size:A4;margin:0}
 .page{position:relative;width:794px;height:1123px;overflow:hidden;font-family:'Jost',sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .page img{display:block}
+.page a{color:inherit;text-decoration:none}
 .page .tex{position:absolute;left:0;top:0;width:100%;height:100%;object-fit:cover;mix-blend-mode:multiply}
 .page{--esp:1}
 .page .corps>*{flex-shrink:0}
@@ -447,7 +448,11 @@ const cadreDore = () =>
   `<div style="position:absolute;left:22px;top:22px;right:22px;bottom:22px;border:1px solid ${OR}"></div>
    <div style="position:absolute;left:30px;top:30px;right:30px;bottom:30px;border:2px solid ${OR}"></div>`;
 
-const contactLigne = g => `<span data-champ="global.nom">${esc(g.nom)} « ${esc(g.nomScene)} »</span> · <span data-champ="global.telephone">${esc(g.telephone)}</span> · <span data-champ="global.email">${esc(g.email)}</span>`;
+/* Liens cliquables dans le PDF : téléphone, e-mail, site, vidéo */
+const urlSite = s => /^https?:\/\//i.test(s || '') ? s : 'https://' + String(s || '').trim();
+const urlTel = t => { const n = String(t || '').replace(/[^\d+]/g, ''); return 'tel:' + (n.startsWith('0') ? '+33' + n.slice(1) : n); };
+const lien = (href, contenu) => href ? `<a href="${escBrut(href)}" target="_blank" rel="noopener">${contenu}</a>` : contenu;
+const contactLigne = g => `<span data-champ="global.nom">${esc(g.nom)} « ${esc(g.nomScene)} »</span> · <span data-champ="global.telephone">${lien(urlTel(g.telephone), esc(g.telephone))}</span> · <span data-champ="global.email">${lien('mailto:' + String(g.email || '').trim(), esc(g.email))}</span>`;
 /* Attribut qui relie un élément de l'aperçu à son champ dans le formulaire */
 const ch = chemin => ` data-champ="${chemin}"`;
 const cheminP = p => 'prestations.' + DONNEES.prestations.indexOf(p);
@@ -483,7 +488,7 @@ function enveloppePapier(g, p, surtitre, tailleTitre, corps, champSurtitre){
   </div>
   <div style="position:absolute;left:0;right:0;bottom:32px;height:42px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;color:${CREME}">
     <div style="font-size:13px">${contactLigne(g)}</div>
-    <div${ch('global.site')} style="font-family:'Cinzel',serif;font-size:16px;letter-spacing:0.16em;font-weight:700;color:${OR}">${esc(g.site)}</div>
+    <div${ch('global.site')} style="font-family:'Cinzel',serif;font-size:16px;letter-spacing:0.16em;font-weight:700;color:${OR}">${lien(urlSite(g.site), esc(g.site))}</div>
   </div>
 </div>`;
 }
@@ -568,7 +573,7 @@ function rendrePlaquette(g, p){
   if (p.duree) infos.push(blocInfo(1, 'DURÉE', esc(p.duree), 16, P + '.duree'));
   if (versions.length) infos.push(blocInfo(1.6, p.titreVersions ? esc(maj(p.titreVersions)) : (NOMBRES[versions.length] ? NOMBRES[versions.length] + ' ' : '') + (versions.length > 1 ? 'VERSIONS' : 'VERSION'),
       versions.map(v => esc(v.nom) + (v.detail ? ' · ' + esc(v.detail) : '')).join('<br>'), 14, P + '.versions.0.nom'));
-  if (p.video) infos.push(blocInfo(1, 'VIDÉO', `<span style="font-weight:500">${esc(videoCourte(p.video))}</span>`, 14, P + '.video'));
+  if (p.video) infos.push(blocInfo(1, 'VIDÉO', `<span style="font-weight:500">${lien(urlSite(p.video), esc(videoCourte(p.video)))}</span>`, 14, P + '.video'));
 
   return `<div class="page" data-photoh="${R.hauteur}" data-photol="${R.largeur}" style="${styleTeintes(p)};--photoH:${R.hauteur}px;background:var(--deep);color:${CREME}">
   <img class="tex" src="${TEXTURE}" alt="" style="opacity:.55">
@@ -596,7 +601,7 @@ function rendrePlaquette(g, p){
     ${infos.length ? `<div style="display:flex;margin-top:calc(24px*var(--esp));width:100%;border-top:1px solid ${OR};border-bottom:1px solid ${OR}">${infos.join(sep)}</div>` : ''}
     <div style="flex-grow:1"></div>
     <div style="font-size:13px;text-align:center">${contactLigne(g)}</div>
-    <div${ch('global.site')} style="font-family:'Cinzel',serif;font-size:17px;letter-spacing:0.16em;color:${OR};margin-top:4px">${esc(g.site)}</div>
+    <div${ch('global.site')} style="font-family:'Cinzel',serif;font-size:17px;letter-spacing:0.16em;color:${OR};margin-top:4px">${lien(urlSite(g.site), esc(g.site))}</div>
   </div>
 </div>`;
 }
@@ -737,9 +742,9 @@ function rendreTarifs(g, p){
    Application
    ===================================================================== */
 const DOCS = {
-  plaquette: { nom: 'Plaquette',       rendre: rendrePlaquette },
-  fiche:     { nom: 'Fiche technique', rendre: rendreFiche },
-  tarifs:    { nom: 'Tarifs',          rendre: rendreTarifs }
+  plaquette: { nom: 'Plaquette',       numero: '01', rendre: rendrePlaquette },
+  fiche:     { nom: 'Fiche technique', numero: '02', rendre: rendreFiche },
+  tarifs:    { nom: 'Tarifs',          numero: '03', rendre: rendreTarifs }
 };
 const ONGLETS = {
   global:    { nom: 'Coordonnées' },
@@ -863,7 +868,7 @@ async function exporterPdf(){
   document.querySelectorAll('.feuille').forEach(f => f.classList.toggle('a-imprimer', f.dataset.doc === etat.doc));
   await document.fonts.ready;
   const titre = document.title;
-  document.title = `${p.nom} - ${DOCS[etat.doc].nom}`;   // nom de fichier proposé pour le PDF
+  document.title = `${p.nom} - ${DOCS[etat.doc].numero} ${DOCS[etat.doc].nom}`;   // nom de fichier proposé : « Illusion - 01 Plaquette »
   window.print();
   document.title = titre;
 }
@@ -1752,6 +1757,7 @@ function initApercuInteractif(){
   scene.addEventListener('pointerup', fin);
   scene.addEventListener('pointercancel', fin);
   scene.addEventListener('click', e => {
+    if (e.target.closest('a')) e.preventDefault();
     if (Date.now() - finGlisse < 400) return;
     const el = e.target.closest('[data-champ]');
     if (el) localiser(el.dataset.champ);
