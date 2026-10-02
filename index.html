@@ -66,6 +66,9 @@ a{color:inherit}
 .mode-photo small{font-size:10.5px;color:#8a7c6c;text-align:center;line-height:1.2}
 .mode-photo[aria-pressed="true"]{background:#2A211A;color:#F6EEDD;border-color:#2A211A}
 .mode-photo[aria-pressed="true"] small{color:#d8ccb8}
+.case.petite{font-size:12.5px;margin:-4px 0 8px;color:#5b4d3f}
+.case.petite i{font-style:normal;color:#9a8b7a;font-size:11.5px}
+.badge{display:inline-block;margin-left:4px;padding:0 6px;border-radius:8px;background:#e8dcc5;color:#7a5a2c;font-size:10.5px;font-weight:600;letter-spacing:.03em}
 .curseur output{font-weight:400;color:#7a5a2c;margin-left:4px}
 .curseur input[type=range]{width:100%;accent-color:#A8823F}
 .reglages-photo{padding:8px 10px 2px;margin-bottom:10px;border:1px solid #e1d5c2;border-radius:8px;background:#fbf7ef}
@@ -514,6 +517,39 @@ function enveloppePapier(g, p, surtitre, tailleTitre, corps, champSurtitre){
 }
 
 /* =====================================================================
+   Chiffres clés de la fiche technique
+   - Chaque case a une clé (duree, installation, rangement, jauge, ou libre).
+   - Intitulé commun à tous les spectacles (DONNEES.global.intitules[cle]) ou propre (propre: true).
+   - Durée et jauge peuvent être synchronisées avec la plaquette (synchro: true → p.duree / p.jauge).
+   ===================================================================== */
+const CLES_SYNCHRO = { duree: 'durée', jauge: 'jauge' };
+function cleIntitule(label){
+  const k = String(label || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  return { spectacle: 'duree', duree: 'duree', 'jauge-max': 'jauge', jauge: 'jauge' }[k] || k || 'case';
+}
+const intituleDe = c => c.cle && !c.propre ? (DONNEES.global.intitules?.[c.cle] ?? c.label) : c.label;
+const estSynchro = c => !!(CLES_SYNCHRO[c.cle] && c.synchro);
+const valeurDe = (p, c) => estSynchro(c) ? p[c.cle] : c.valeur;
+
+/* Mise à niveau des données existantes (sans effet si déjà faite) */
+function migrerDonnees(d){
+  d.global.intitules ??= {};
+  const norme = v => String(v ?? '').replace(/\s+/g, ' ').trim().toLowerCase();
+  for (const p of d.prestations){
+    for (const c of p.fiche?.chiffres || []){
+      if (c.cle) continue;
+      c.cle = cleIntitule(c.label);
+      if (!(c.cle in d.global.intitules)) d.global.intitules[c.cle] = c.label;
+      c.propre = c.label !== d.global.intitules[c.cle];
+      if (c.cle === 'jauge' && !p.jauge){ p.jauge = c.valeur; }
+      /* synchronisé seulement si plaquette et fiche disent déjà la même chose (sinon on respecte la différence) */
+      if (CLES_SYNCHRO[c.cle]) c.synchro = norme(p[c.cle]) === norme(c.valeur);
+    }
+  }
+  return d;
+}
+
+/* =====================================================================
    1. Plaquette
    ===================================================================== */
 /* Réglages de la photo principale (hauteur, largeur, cadrage, zoom) */
@@ -598,8 +634,11 @@ function rendrePlaquette(g, p){
        <span style="font-size:${tailleTexte}px;line-height:1.35;font-weight:${tailleTexte === 16 ? 500 : 400}">${contenu}</span></div>`;
   const sep = `<div style="width:1px;background:${OR}"></div>`;
   const infos = [];
-  if (p.duree) infos.push(blocInfo(1, 'DURÉE', esc(p.duree), 16, P + '.duree'));
-  if (versions.length) infos.push(blocInfo(1.6, p.titreVersions ? esc(maj(p.titreVersions)) : (NOMBRES[versions.length] ? NOMBRES[versions.length] + ' ' : '') + (versions.length > 1 ? 'VERSIONS' : 'VERSION'),
+  /* avec la jauge, durée et jauge prennent des colonnes plus étroites pour laisser la place aux versions */
+  const avecJauge = !!(p.jauge && p.jaugePlaquette !== false), courte = avecJauge ? .7 : 1;
+  if (p.duree) infos.push(blocInfo(courte, 'DURÉE', esc(p.duree), 16, P + '.duree'));
+  if (avecJauge) infos.push(blocInfo(courte, 'JAUGE', esc(p.jauge), 16, P + '.jauge'));
+  if (versions.length) infos.push(blocInfo(avecJauge ? 2.1 : 1.6, p.titreVersions ? esc(maj(p.titreVersions)) : (NOMBRES[versions.length] ? NOMBRES[versions.length] + ' ' : '') + (versions.length > 1 ? 'VERSIONS' : 'VERSION'),
       versions.map(v => esc(v.nom) + (v.detail ? ' · ' + esc(v.detail) : '')).join('<br>'), 14, P + '.versions.0.nom'));
   if (p.video) infos.push(blocInfo(1, 'VIDÉO', `<span style="font-weight:500">${lien(urlSite(p.video), `<span style="display:inline-flex;align-items:center;gap:7px">${logoVideo(p.video)}${esc(videoCourte(p.video))}</span>`)}</span>`, 14, P + '.video'));
 
@@ -647,8 +686,8 @@ function rendreFiche(g, p){
   const f = p.fiche || {}, F = cheminP(p) + '.fiche';
   const chiffres = (f.chiffres || []).map((c, i) =>
     `<div${ch(`${F}.chiffres.${i}.valeur`)} style="flex-grow:1;flex-basis:0;display:flex;flex-direction:column;align-items:center;gap:2px;padding:12px 6px">
-      <span style="font-family:'Cinzel',serif;font-size:11.5px;letter-spacing:0.22em;font-weight:700;color:var(--deep)">${esc(maj(c.label))}</span>
-      <span style="font-family:'Abril Fatface',serif;font-size:30px;line-height:1.05;color:var(--deep)">${esc(c.valeur)}</span></div>`
+      <span style="font-family:'Cinzel',serif;font-size:11.5px;letter-spacing:0.22em;font-weight:700;color:var(--deep)">${esc(maj(intituleDe(c)))}</span>
+      <span style="font-family:'Abril Fatface',serif;font-size:30px;line-height:1.05;color:var(--deep)">${esc(valeurDe(p, c))}</span></div>`
   ).join('<div style="width:1px;background:var(--deep)"></div>');
 
   const besoins = (f.besoins || []).map((b, i) =>
@@ -800,6 +839,7 @@ function ecrire(chemin, valeur){
    Aperçu
    ===================================================================== */
 function afficher(){
+  if (!new URLSearchParams(location.search).has('impression')) memoriserVue();
   const p = prestaCourante(), g = DONNEES.global;
   const docs = etat.doc === 'tous' ? Object.keys(DOCS) : [etat.doc];
   $('#scene').innerHTML = docs.map(k =>
@@ -1041,7 +1081,9 @@ function editeurPrestation(P){
     + section('Présentation', `
       ${champ('Texte de présentation', P + '.presentation', { long: 5 })}
       ${choixAlignement(P + '.alignPresentation')}
-      <div class="rangee">${champ('Durée', P + '.duree', { exemple: '50 min', classe: 'etroit' })}${champ('Lien vidéo', P + '.video', { facultatif: true })}</div>`)
+      <div class="rangee">${champ('Durée', P + '.duree', { exemple: '50 min', classe: 'etroit' })}${champ('Jauge', P + '.jauge', { exemple: '400', classe: 'etroit', facultatif: true })}${champ('Lien vidéo', P + '.video', { facultatif: true })}</div>
+      <label class="case"><input type="checkbox" data-action="jauge-plaquette" data-chemin="${P}.jaugePlaquette" ${lire(P + '.jaugePlaquette') !== false ? 'checked' : ''}> Afficher la jauge sur la plaquette</label>
+      <p class="aide">Durée et jauge sont partagées avec la fiche technique (cases synchronisées).</p>`)
     + section('Versions', champ('Titre du bloc', P + '.titreVersions', { facultatif: true, exemple: 'Deux versions', aide: 'Vide : « Deux versions », « Trois versions »… selon le nombre.' }) + liste('Versions', P + '.versions', c => `
       <div class="rangee">${champ('Nom', c + '.nom', { classe: 'etroit' })}${champ('Détail', c + '.detail')}</div>`,
       { nom: '', detail: '' }, { nom: v => v.nom, ajouter: 'Ajouter une version' }));
@@ -1106,9 +1148,12 @@ function reglagesPhotoHtml(P, mode = 'unique'){
 
 function editeurFiche(P){
   const F = P + '.fiche', d = lire(F + '.disposition'), dVisible = d && d.afficher !== false;
-  return section('Chiffres clés', liste('Cases', F + '.chiffres', c => `
-      <div class="rangee">${champ('Intitulé', c + '.label')}${champ('Valeur', c + '.valeur', { classe: 'etroit' })}</div>`,
-      { label: '', valeur: '' }, { nom: x => x.label, ajouter: 'Ajouter une case' }), 'Durée, temps d’installation et de rangement, jauge… 4 cases conseillées.')
+  return section('Chiffres clés', liste('Cases', F + '.chiffres', (c, it) => {
+      const commun = it.cle && !it.propre, synchro = estSynchro(it);
+      return `<div class="rangee">${champ(commun ? 'Intitulé <b class="badge">commun</b>' : 'Intitulé', commun ? `global.intitules.${it.cle}` : c + '.label')}${champ(synchro ? 'Valeur <b class="badge">plaquette</b>' : 'Valeur', synchro ? `${P}.${it.cle}` : c + '.valeur', { classe: 'etroit' })}</div>
+        <label class="case petite"><input type="checkbox" data-action="intitule-commun" data-chemin="${c}" ${commun ? 'checked' : ''}> Intitulé commun à tous les spectacles <i>(le modifier ici le change partout)</i></label>
+        ${CLES_SYNCHRO[it.cle] ? `<label class="case petite"><input type="checkbox" data-action="synchro" data-chemin="${c}" ${synchro ? 'checked' : ''}> Synchronisé avec la ${CLES_SYNCHRO[it.cle]} de la plaquette</label>` : ''}`;
+    }, { cle: '', label: '', valeur: '', propre: true }, { nom: x => intituleDe(x), ajouter: 'Ajouter une case' }), 'Durée, temps d’installation et de rangement, jauge… 4 cases conseillées.')
     + section('Besoins techniques', liste('Besoins', F + '.besoins', c => `
       <div class="rangee">${champPicto(c + '.picto')}${champ('Titre', c + '.titre')}</div>
       ${champ('Détail', c + '.detail', { facultatif: true })}`,
@@ -1230,7 +1275,29 @@ function surClic(e){
 }
 
 function surChangement(e){
-  if (e.target.dataset.action !== 'disposition') return;
+  const action = e.target.dataset.action, chemin = e.target.dataset.chemin, coche = e.target.checked;
+  if (action === 'jauge-plaquette'){ ecrire(chemin, coche); construireEditeur(); afficher(); return; }
+  if (action === 'intitule-commun'){
+    const it = lire(chemin);
+    if (coche){
+      /* rejoint l'intitulé commun de même nom (ou le crée) */
+      const cle = it.cle || cleIntitule(it.label);
+      DONNEES.global.intitules ??= {};
+      if (!(cle in DONNEES.global.intitules)) DONNEES.global.intitules[cle] = it.label;
+      ecrire(chemin, { ...it, cle, propre: false });
+    } else ecrire(chemin, { ...it, label: intituleDe(it), propre: true });
+    construireEditeur(); afficher(); return;
+  }
+  if (action === 'synchro'){
+    const it = lire(chemin), P = chemin.split('.fiche.')[0];
+    if (coche){
+      /* la valeur de la plaquette fait foi ; si elle est vide, on reprend celle de la fiche */
+      if (!String(lire(`${P}.${it.cle}`) || '').trim()) ecrire(`${P}.${it.cle}`, it.valeur);
+      ecrire(chemin, { ...it, synchro: true });
+    } else ecrire(chemin, { ...it, valeur: lire(`${P}.${it.cle}`) ?? it.valeur, synchro: false });
+    construireEditeur(); afficher(); return;
+  }
+  if (action !== 'disposition') return;
   const F = `prestations.${indexPresta()}.fiche`;
   /* masquer ne supprime pas les textes : on peut réafficher le schéma tel quel */
   if (!lire(F + '.disposition')) ecrire(F + '.disposition', { scene: 'Scène', notes: ['Fond de scène · aucun passage derrière', 'Public face à la scène'] });
@@ -1244,7 +1311,7 @@ function prestationVierge(){
   return {
     id: nouvelId('nouvelle'), nom: 'Nouvelle prestation', sousTitre: 'Spectacle de magie', accent: '#1F4E8C',
     photoPrincipale: null, photoMedaillon: null, legendeMedaillon: '', presentation: '', video: '', duree: '', versions: [],
-    fiche: { chiffres: [{ label: 'Spectacle', valeur: '' }, { label: 'Installation', valeur: '' }, { label: 'Rangement', valeur: '' }, { label: 'Jauge max.', valeur: '' }],
+    fiche: { chiffres: [{ cle: 'duree', label: 'Spectacle', synchro: true }, { cle: 'installation', label: 'Installation', valeur: '' }, { cle: 'rangement', label: 'Rangement', valeur: '' }, { cle: 'jauge', label: 'Jauge max.', synchro: true }],
              besoins: [], disposition: null },
     tarifs: { titre: 'Tarifs ' + new Date().getFullYear(),
               spectacle: { libelle: '', description: '', prix: '', mentionPrix: 'TTC', polaroid: null, inclus: [], options: [] },
@@ -1612,8 +1679,9 @@ async function chargerStockage(){
       IMAGES.set(id, { blob: v.blob, url: URL.createObjectURL(v.blob), nom: v.nom, source: v.source });
     dernierExport = await bdLire('donnees', 'dernierExport') || 0;
     const enregistre = await bdLire('donnees', 'courant');
-    if (enregistre) DONNEES = enregistre;
-    else { await convertirAssets(); await bdEcrire('donnees', 'courant', structuredClone(DONNEES)); }
+    if (enregistre) DONNEES = migrerDonnees(enregistre);
+    else { migrerDonnees(DONNEES); await convertirAssets(); }
+    await bdEcrire('donnees', 'courant', structuredClone(DONNEES));
     etat.presta = DONNEES.prestations[0]?.id;
     etatSauvegarde('ok');
   } catch (err) {
@@ -1715,7 +1783,8 @@ async function importerSauvegarde(fichier){
     for (const v of IMAGES.values()) URL.revokeObjectURL(v.url);
     IMAGES.clear();
     for (const [id, v] of nouvelles) IMAGES.set(id, { ...v, url: URL.createObjectURL(v.blob) });
-    DONNEES = contenu.donnees;
+    DONNEES = migrerDonnees(contenu.donnees);
+    await bdEcrire('donnees', 'courant', structuredClone(DONNEES));
     etat.presta = DONNEES.prestations[0]?.id;
     sauvegardeEnAttente = false; etatSauvegarde('ok');
     $('#dlgSauvegarde').close();
@@ -1752,6 +1821,7 @@ async function ajouterDepuisFichier(fichier){
     for (const c of contenu.donnees.catalogue || [])
       if (!dansCatalogue(c)) { DONNEES.catalogue.push(c); options++; }
     await convertirAssets();   // les chemins « assets/… » éventuels réutilisent vos images existantes
+    migrerDonnees(DONNEES);
     await sauverMaintenant();
     etat.presta = arrivees[0].id;
     $('#dlgSauvegarde').close();
@@ -1834,6 +1904,22 @@ function initApercuInteractif(){
   });
 }
 
+/* ---------- Position dans l'app, retrouvée après actualisation (propre à ce navigateur) ---------- */
+const CLE_VUE = 'pdfmagie-vue';
+function memoriserVue(){
+  try { localStorage.setItem(CLE_VUE, JSON.stringify({ presta: etat.presta, doc: etat.doc, onglet: etat.onglet, defil: $('#editeur-contenu').scrollTop })); } catch {}
+}
+function restaurerVue(){
+  try {
+    const v = JSON.parse(localStorage.getItem(CLE_VUE) || 'null');
+    if (!v) return 0;
+    if (DONNEES.prestations.some(p => p.id === v.presta)) etat.presta = v.presta;
+    if (DOCS[v.doc] || v.doc === 'tous') etat.doc = v.doc;
+    if (ONGLETS[v.onglet]) etat.onglet = v.onglet;
+    return v.defil || 0;
+  } catch { return 0; }
+}
+
 /* =====================================================================
    Démarrage
    ===================================================================== */
@@ -1851,6 +1937,7 @@ async function init(){
       }
       DONNEES.prestations.push(...f.donnees.prestations);
     }
+    migrerDonnees(DONNEES);
     if (qi.get('presta')) etat.presta = qi.get('presta');
   } else await chargerStockage();
   histoInit();
@@ -1901,10 +1988,17 @@ async function init(){
 
   /* Paramètres d'URL : ?doc=tarifs, ?impression (voir plus haut) */
   const q = new URLSearchParams(location.search);
+  const defil = q.has('impression') ? 0 : restaurerVue();
   if (DOCS[q.get('doc')]) etat.doc = q.get('doc');
   if (q.has('impression')) document.body.classList.add('sans-editeur');
+  remplirPrestations();
   construireEditeur();
+  $('#editeur-contenu').scrollTop = defil;
   afficher();
+  if (!q.has('impression')){
+    let minuterieDefil;
+    $('#editeur-contenu').addEventListener('scroll', () => { clearTimeout(minuterieDefil); minuterieDefil = setTimeout(memoriserVue, 250); });
+  }
   /* &pages=plaquette,tarifs : seulement ces pages (vérification d'un PDF combiné) */
   if (q.has('impression')) document.querySelectorAll('.feuille').forEach(f => f.classList.toggle('a-imprimer', !q.get('pages') || q.get('pages').split(',').includes(f.dataset.doc)));
 }
