@@ -30,10 +30,23 @@ a{color:inherit}
 .btn-pdf{font:inherit;font-size:14px;font-weight:600;padding:7px 16px;border:0;border-radius:8px;background:var(--ui-gold);color:#2A211A;cursor:pointer}
 .btn-pdf:hover{filter:brightness(1.08)}
 .btn-pdf:disabled{opacity:.5;cursor:default;filter:none}
-.etat-sauvegarde{margin-left:auto;font-size:12.5px;opacity:.75}
+.etat-sauvegarde{font-size:12.5px;opacity:.75}
 .etat-sauvegarde[data-etat="erreur"]{color:#ffb08a;opacity:1;font-weight:600}
 .btn-barre{font:inherit;font-size:14px;padding:6px 14px;border:1px solid #6b5c4c;border-radius:8px;background:#3a2f26;color:var(--ui-text);cursor:pointer}
 .btn-barre:hover{border-color:var(--ui-gold)}
+.histo{display:flex;gap:4px;margin-left:auto}
+.histo .btn-barre{font-size:17px;padding:2px 11px;line-height:1.3}
+.btn-barre:disabled{opacity:.35;cursor:default;border-color:#6b5c4c}
+.feuille [data-champ]{cursor:pointer}
+.feuille [data-champ]:hover:not(:has([data-champ]:hover)){outline:1.5px dashed rgba(216,180,106,.95);outline-offset:3px}
+.feuille .photo-cadre{cursor:grab;touch-action:none}
+.feuille .photo-cadre.glisse{cursor:grabbing}
+.champ.repere{animation:repere 1.6s ease-out}
+@keyframes repere{0%,40%{background:#fde7a8;box-shadow:0 0 0 6px #fde7a8}100%{background:transparent;box-shadow:0 0 0 6px transparent}}
+.curseur output{font-weight:400;color:#7a5a2c;margin-left:4px}
+.curseur input[type=range]{width:100%;accent-color:#A8823F}
+.reglages-photo{padding:8px 10px 2px;margin-bottom:10px;border:1px solid #e1d5c2;border-radius:8px;background:#fbf7ef}
+.reglages-photo .aide{margin:0 0 8px}
 .btn-barre.a-exporter::after{content:'';display:inline-block;width:8px;height:8px;margin-left:7px;border-radius:50%;background:#ff9f5a;vertical-align:1px}
 #dlgSauvegarde{width:min(520px,92vw);padding:0;border:0;border-radius:12px;background:#F3ECDF;color:#2A211A;box-shadow:0 20px 60px rgba(0,0,0,.5)}
 #dlgSauvegarde::backdrop{background:rgba(20,14,10,.6)}
@@ -166,6 +179,7 @@ button.petit.danger{color:#9b2335;border-color:#d9a8a8}
   .feuille .page{transform:none}
   .feuille:not(.a-imprimer){display:none}
   .debord{outline:none}
+  .feuille [data-champ]{outline:none!important}
   /* 297 mm = 1122,5 px : on rogne le demi-pixel pour éviter une 2ᵉ page blanche */
   .page{width:210mm;height:297mm;break-after:avoid;page-break-after:avoid}
 }
@@ -183,6 +197,7 @@ button.petit.danger{color:#9b2335;border-color:#d9a8a8}
     <button data-doc="tarifs">Tarifs</button>
     <button data-doc="tous">Les trois</button>
   </div>
+  <span class="histo"><button class="btn-barre" id="btnAnnuler" title="Annuler (Ctrl+Z)" disabled>↶</button><button class="btn-barre" id="btnRetablir" title="Rétablir (Ctrl+Y)" disabled>↷</button></span>
   <span class="etat-sauvegarde" id="etatSauvegarde" data-etat="attente">Chargement…</span>
   <button class="btn-barre" id="btnSauvegarde">Sauvegarde</button>
   <button class="btn-pdf" id="btnPdf">Exporter en PDF</button>
@@ -214,6 +229,7 @@ button.petit.danger{color:#9b2335;border-color:#d9a8a8}
     <p id="infoExport"></p>
     <div class="sauv-actions">
       <button type="button" class="btn-import" id="btnExporter">Exporter une sauvegarde</button>
+      <button type="button" class="btn-import secondaire" id="btnOptimiser" title="Réduit le poids des images déjà importées, et donc des PDF">Optimiser mes images</button>
       <label class="btn-import secondaire">Ajouter des prestations depuis un fichier…<input type="file" id="fichierAjout" accept=".json,application/json" hidden></label>
       <label class="btn-import secondaire">Importer une sauvegarde (remplace tout)…<input type="file" id="fichierSauvegarde" accept=".json,application/json" hidden></label>
     </div>
@@ -404,15 +420,19 @@ const cadreDore = () =>
   `<div style="position:absolute;left:22px;top:22px;right:22px;bottom:22px;border:1px solid ${OR}"></div>
    <div style="position:absolute;left:30px;top:30px;right:30px;bottom:30px;border:2px solid ${OR}"></div>`;
 
-const contactLigne = g => `${esc(g.nom)} « ${esc(g.nomScene)} » · ${esc(g.telephone)} · ${esc(g.email)}`;
+const contactLigne = g => `<span data-champ="global.nom">${esc(g.nom)} « ${esc(g.nomScene)} »</span> · <span data-champ="global.telephone">${esc(g.telephone)}</span> · <span data-champ="global.email">${esc(g.email)}</span>`;
+/* Attribut qui relie un élément de l'aperçu à son champ dans le formulaire */
+const ch = chemin => ` data-champ="${chemin}"`;
+const cheminP = p => 'prestations.' + DONNEES.prestations.indexOf(p);
 
-function medaillon(src, alt, taille, extraStyle, posImage = 'center'){
-  return `<div style="position:absolute;${extraStyle};padding:4px;border-radius:50%;background:${OR};box-shadow:0 10px 24px rgba(0,0,0,0.35)">
+function medaillon(src, alt, taille, extraStyle, posImage = 'center', champ = ''){
+  return `<div${champ ? ch(champ) : ''} style="position:absolute;${extraStyle};padding:4px;border-radius:50%;background:${OR};box-shadow:0 10px 24px rgba(0,0,0,0.35)">
     <img src="${img(src)}" alt="${esc(alt)}" style="width:${taille}px;height:${taille}px;border-radius:50%;object-fit:cover;object-position:${posImage};border:4px solid var(--deep)"></div>`;
 }
 
 /* Bandeau de tête + bas de page des documents « papier » */
-function enveloppePapier(g, p, surtitre, tailleTitre, corps){
+function enveloppePapier(g, p, surtitre, tailleTitre, corps, champSurtitre){
+  const P = cheminP(p);
   return `<div class="page" style="${styleTeintes(p)};background:${PAPIER};color:${ENCRE}">
   <img class="tex" src="${TEXTURE}" alt="" style="opacity:.45">
   <div style="position:absolute;left:0;top:0;width:100%;height:182px;overflow:hidden;background:var(--deep)">
@@ -425,18 +445,18 @@ function enveloppePapier(g, p, surtitre, tailleTitre, corps){
   ${cadreDore()}
   <div style="position:absolute;left:66px;right:250px;top:34px;height:148px;display:flex;align-items:center">
     <div style="display:flex;flex-direction:column;gap:2px;width:100%;min-width:0">
-      <div style="font-family:'Cinzel',serif;font-size:14px;letter-spacing:0.38em;color:${OR}">${esc(maj(surtitre))}</div>
-      <h1 data-hmax="94" data-tmax="${tailleTitre}" style="margin:0;font-family:'Abril Fatface',serif;font-weight:400;font-size:${tailleTitre}px;line-height:1;color:${CREME}">${esc(p.nom)}</h1>
-      <div style="display:flex;align-items:center;gap:12px;margin-top:4px">${etoile(9)}<span style="font-family:'Cinzel',serif;font-size:15px;letter-spacing:0.22em;color:${OR}">${esc(maj(p.sousTitre))}</span></div>
+      <div${champSurtitre ? ch(champSurtitre) : ''} style="font-family:'Cinzel',serif;font-size:14px;letter-spacing:0.38em;color:${OR}">${esc(maj(surtitre))}</div>
+      <h1${ch(P + '.nom')} data-hmax="94" data-tmax="${tailleTitre}" style="margin:0;font-family:'Abril Fatface',serif;font-weight:400;font-size:${tailleTitre}px;line-height:1;color:${CREME}">${esc(p.nom)}</h1>
+      <div style="display:flex;align-items:center;gap:12px;margin-top:4px">${etoile(9)}<span${ch(P + '.sousTitre')} style="font-family:'Cinzel',serif;font-size:15px;letter-spacing:0.22em;color:${OR}">${esc(maj(p.sousTitre))}</span></div>
     </div>
   </div>
-  ${medaillon(p.photoPrincipale, `${g.nomScene} dans le spectacle ${p.nom}`, 150, 'right:62px;top:64px', '52% 22%')}
+  ${medaillon(p.photoPrincipale, `${g.nomScene} dans le spectacle ${p.nom}`, 150, 'right:62px;top:64px', '52% 22%', P + '.photoPrincipale')}
   <div class="corps" style="position:relative;width:100%;height:100%;padding:196px 66px 86px;display:flex;flex-direction:column">
     ${corps}
   </div>
   <div style="position:absolute;left:0;right:0;bottom:32px;height:42px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;color:${CREME}">
     <div style="font-size:13px">${contactLigne(g)}</div>
-    <div style="font-family:'Cinzel',serif;font-size:16px;letter-spacing:0.16em;font-weight:700;color:${OR}">${esc(g.site)}</div>
+    <div${ch('global.site')} style="font-family:'Cinzel',serif;font-size:16px;letter-spacing:0.16em;font-weight:700;color:${OR}">${esc(g.site)}</div>
   </div>
 </div>`;
 }
@@ -444,44 +464,55 @@ function enveloppePapier(g, p, surtitre, tailleTitre, corps){
 /* =====================================================================
    1. Plaquette
    ===================================================================== */
+/* Réglages de la photo principale (hauteur, largeur, cadrage, zoom) */
+function reglagesPhoto(p){
+  const R = { largeur: 100, hauteur: 360, x: 50, y: 28, zoom: 1, ...(p.photoReglages || {}) };
+  for (const k in R) R[k] = Number(R[k]);
+  return R;
+}
+const stylePhotoImg = R =>
+  `position:absolute;left:${-(R.zoom - 1) * R.x}%;top:${-(R.zoom - 1) * R.y}%;width:${R.zoom * 100}%;height:${R.zoom * 100}%;object-fit:cover;object-position:${R.x}% ${R.y}%`;
+
 function rendrePlaquette(g, p){
-  const versions = p.versions || [];
-  const blocInfo = (grow, titre, contenu, tailleTexte = 16) =>
-    `<div style="flex-grow:${grow};flex-basis:0;display:flex;flex-direction:column;align-items:center;gap:2px;padding:13px 8px;text-align:center">
+  const versions = p.versions || [], P = cheminP(p), R = reglagesPhoto(p);
+  const blocInfo = (grow, titre, contenu, tailleTexte = 16, champ = '') =>
+    `<div${champ ? ch(champ) : ''} style="flex-grow:${grow};flex-basis:0;display:flex;flex-direction:column;align-items:center;gap:2px;padding:13px 8px;text-align:center">
        <span style="font-family:'Cinzel',serif;font-size:12px;letter-spacing:0.24em;color:${OR}">${titre}</span>
        <span style="font-size:${tailleTexte}px;line-height:1.35;font-weight:${tailleTexte === 16 ? 500 : 400}">${contenu}</span></div>`;
   const sep = `<div style="width:1px;background:${OR}"></div>`;
   const infos = [];
-  if (p.duree) infos.push(blocInfo(1, 'DURÉE', esc(p.duree)));
+  if (p.duree) infos.push(blocInfo(1, 'DURÉE', esc(p.duree), 16, P + '.duree'));
   if (versions.length) infos.push(blocInfo(1.6, p.titreVersions ? esc(maj(p.titreVersions)) : (NOMBRES[versions.length] ? NOMBRES[versions.length] + ' ' : '') + (versions.length > 1 ? 'VERSIONS' : 'VERSION'),
-      versions.map(v => esc(v.nom) + (v.detail ? ' · ' + esc(v.detail) : '')).join('<br>'), 14));
-  if (p.video) infos.push(blocInfo(1, 'VIDÉO', `<span style="font-weight:500">${esc(videoCourte(p.video))}</span>`, 14));
+      versions.map(v => esc(v.nom) + (v.detail ? ' · ' + esc(v.detail) : '')).join('<br>'), 14, P + '.versions.0.nom'));
+  if (p.video) infos.push(blocInfo(1, 'VIDÉO', `<span style="font-weight:500">${esc(videoCourte(p.video))}</span>`, 14, P + '.video'));
 
-  return `<div class="page" style="${styleTeintes(p)};background:var(--deep);color:${CREME}">
+  return `<div class="page" data-photoh="${R.hauteur}" data-photol="${R.largeur}" style="${styleTeintes(p)};--photoH:${R.hauteur}px;background:var(--deep);color:${CREME}">
   <img class="tex" src="${TEXTURE}" alt="" style="opacity:.55">
   ${etoilePos(90,118,18,.9)}${etoilePos(690,96,12,.7)}${etoilePos(650,206,22,.85)}${etoilePos(120,268,10,.6)}
   ${etoilePos(560,62,9,.6)}${etoilePos(220,70,8,.5)}${etoilePos(70,700,12,.55)}${etoilePos(712,760,10,.5)}
   ${cadreDore()}
   <div class="corps" style="position:relative;width:100%;height:100%;padding:60px 66px 52px;display:flex;flex-direction:column;align-items:center">
-    <div style="font-family:'Cinzel',serif;font-size:14px;letter-spacing:0.42em;color:${OR}">${esc(maj(g.nomScene))} PRÉSENTE</div>
-    <h1 data-hmax="200" data-tmax="128" style="margin:6px 0 0;max-width:100%;font-family:'Abril Fatface',serif;font-weight:400;font-size:128px;line-height:1;color:${CREME};text-align:center">${esc(p.nom)}</h1>
-    <div style="display:flex;align-items:center;gap:14px;margin-top:6px">${etoile(10)}<span style="font-family:'Cinzel',serif;font-size:17px;letter-spacing:0.22em;color:${OR}">${esc(maj(p.sousTitre))}</span>${etoile(10)}</div>
-    <div style="position:relative;width:100%;margin-top:calc(28px*var(--esp))">
-      <img src="${img(p.photoPrincipale)}" alt="${esc(g.nomScene)} — ${esc(p.nom)}" style="width:100%;height:var(--photoH,360px);object-fit:cover;object-position:center 28%;border-radius:16px;border:2px solid ${OR};box-shadow:0 18px 40px rgba(0,0,0,0.4)">
+    <div${ch('global.nomScene')} style="font-family:'Cinzel',serif;font-size:14px;letter-spacing:0.42em;color:${OR}">${esc(maj(g.nomScene))} PRÉSENTE</div>
+    <h1${ch(P + '.nom')} data-hmax="200" data-tmax="128" style="margin:6px 0 0;max-width:100%;font-family:'Abril Fatface',serif;font-weight:400;font-size:128px;line-height:1;color:${CREME};text-align:center">${esc(p.nom)}</h1>
+    <div style="display:flex;align-items:center;gap:14px;margin-top:6px">${etoile(10)}<span${ch(P + '.sousTitre')} style="font-family:'Cinzel',serif;font-size:17px;letter-spacing:0.22em;color:${OR}">${esc(maj(p.sousTitre))}</span>${etoile(10)}</div>
+    <div style="position:relative;width:${R.largeur}%;margin-top:calc(28px*var(--esp))">
+      <div class="photo-cadre"${ch(P + '.photoPrincipale')} data-cadrage="${P}" style="position:relative;height:var(--photoH,360px);overflow:hidden;border-radius:16px;border:2px solid ${OR};box-shadow:0 18px 40px rgba(0,0,0,0.4)">
+        <img class="photo-img" src="${img(p.photoPrincipale)}" alt="${esc(g.nomScene)} — ${esc(p.nom)}" draggable="false" style="${stylePhotoImg(R)}">
+      </div>
       ${p.photoMedaillon ? `
-      <div style="position:absolute;right:-16px;bottom:-34px;padding:4px;border-radius:50%;background:${OR};box-shadow:0 10px 24px rgba(0,0,0,0.4)">
+      <div${ch(P + '.photoMedaillon')} style="position:absolute;right:-16px;bottom:-34px;padding:4px;border-radius:50%;background:${OR};box-shadow:0 10px 24px rgba(0,0,0,0.4)">
         <img src="${img(p.photoMedaillon)}" alt="${esc(p.legendeMedaillon)}" style="width:var(--medT,148px);height:var(--medT,148px);border-radius:50%;object-fit:cover;border:4px solid var(--deep)">
       </div>
-      ${p.legendeMedaillon ? `<div style="position:absolute;right:150px;bottom:-30px;font-family:'Cinzel',serif;font-size:12px;letter-spacing:0.2em;color:${OR}">${esc(maj(p.legendeMedaillon))}</div>` : ''}` : ''}
+      ${p.legendeMedaillon ? `<div${ch(P + '.legendeMedaillon')} style="position:absolute;right:calc(var(--medT,148px) + 2px);bottom:-30px;white-space:nowrap;font-family:'Cinzel',serif;font-size:12px;letter-spacing:0.2em;color:${OR}">${esc(maj(p.legendeMedaillon))}</div>` : ''}` : ''}
     </div>
     <div style="display:flex;gap:40px;margin-top:calc(48px*var(--esp))">
-      ${(g.distinctions || []).map(d => `<img src="${img(d.imageOr)}" alt="${esc(d.texte)}" style="height:54px">`).join('')}
+      ${(g.distinctions || []).map((d, i) => `<img${ch(`global.distinctions.${i}.texte`)} src="${img(d.imageOr)}" alt="${esc(d.texte)}" style="height:54px">`).join('')}
     </div>
-    <p style="margin:calc(20px*var(--esp)) 0 0;max-width:610px;text-align:center;font-size:var(--texteT,16px);line-height:1.55;white-space:pre-line">${esc(p.presentation)}</p>
+    <p${ch(P + '.presentation')} style="margin:calc(20px*var(--esp)) 0 0;max-width:610px;text-align:center;font-size:var(--texteT,16px);line-height:1.55;white-space:pre-line">${esc(p.presentation)}</p>
     ${infos.length ? `<div style="display:flex;margin-top:calc(24px*var(--esp));width:100%;border-top:1px solid ${OR};border-bottom:1px solid ${OR}">${infos.join(sep)}</div>` : ''}
     <div style="flex-grow:1"></div>
     <div style="font-size:13px;text-align:center">${contactLigne(g)}</div>
-    <div style="font-family:'Cinzel',serif;font-size:17px;letter-spacing:0.16em;color:${OR};margin-top:4px">${esc(g.site)}</div>
+    <div${ch('global.site')} style="font-family:'Cinzel',serif;font-size:17px;letter-spacing:0.16em;color:${OR};margin-top:4px">${esc(g.site)}</div>
   </div>
 </div>`;
 }
@@ -496,15 +527,15 @@ function intertitre(texte){
 }
 
 function rendreFiche(g, p){
-  const f = p.fiche || {};
-  const chiffres = (f.chiffres || []).map(c =>
-    `<div style="flex-grow:1;flex-basis:0;display:flex;flex-direction:column;align-items:center;gap:2px;padding:12px 6px">
+  const f = p.fiche || {}, F = cheminP(p) + '.fiche';
+  const chiffres = (f.chiffres || []).map((c, i) =>
+    `<div${ch(`${F}.chiffres.${i}.valeur`)} style="flex-grow:1;flex-basis:0;display:flex;flex-direction:column;align-items:center;gap:2px;padding:12px 6px">
       <span style="font-family:'Cinzel',serif;font-size:11.5px;letter-spacing:0.22em;font-weight:700;color:var(--deep)">${esc(maj(c.label))}</span>
       <span style="font-family:'Abril Fatface',serif;font-size:30px;line-height:1.05;color:var(--deep)">${esc(c.valeur)}</span></div>`
   ).join('<div style="width:1px;background:var(--deep)"></div>');
 
-  const besoins = (f.besoins || []).map(b =>
-    `<div style="display:flex;gap:14px;align-items:flex-start;padding:calc(16px*var(--esp)) 0;border-bottom:1px dotted ${OR_PAPIER}">${picto(b.picto)}
+  const besoins = (f.besoins || []).map((b, i) =>
+    `<div${ch(`${F}.besoins.${i}.titre`)} style="display:flex;gap:14px;align-items:flex-start;padding:calc(16px*var(--esp)) 0;border-bottom:1px dotted ${OR_PAPIER}">${picto(b.picto)}
       <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:15px;font-weight:600">${esc(b.titre)}</span>
       ${b.detail ? `<span style="font-size:13.5px;line-height:1.4;color:${ENCRE2}">${esc(b.detail)}</span>` : ''}</div></div>`
   ).join('');
@@ -513,14 +544,14 @@ function rendreFiche(g, p){
   const public_ = Array.from({length: 24}, () => `<div style="height:10px;border-radius:5px;background:${OR_PAPIER};opacity:0.55"></div>`).join('');
   const disposition = d ? `${intertitre('Disposition idéale')}
     <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding-top:8px">
-      ${notes[0] ? `<span style="font-size:12px;letter-spacing:0.18em;color:${ENCRE2}">${esc(maj(notes[0]))}</span>` : ''}
+      ${notes[0] ? `<span${ch(F + '.disposition.notes.0')} style="font-size:12px;letter-spacing:0.18em;color:${ENCRE2}">${esc(maj(notes[0]))}</span>` : ''}
       <div style="width:320px;height:10px;background:var(--deep);border-radius:3px"></div>
-      <div style="width:320px;height:70px;border:1.5px solid var(--deep);border-radius:6px;background:var(--soft);display:flex;align-items:center;justify-content:center;font-size:13px">${esc(d.scene)}</div>
+      <div style="width:320px;height:70px;border:1.5px solid var(--deep);border-radius:6px;background:var(--soft);display:flex;align-items:center;justify-content:center;font-size:13px"${ch(F + '.disposition.scene')}>${esc(d.scene)}</div>
       <div style="display:flex;gap:22px;align-items:center">
         <span style="font-size:20px;color:${GRIS}">×</span>
         <div style="display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:6px;width:240px">${public_}</div>
         <span style="font-size:20px;color:${GRIS}">×</span></div>
-      ${notes.slice(1).map(n => `<span style="font-size:12px;color:${ENCRE2}">${esc(n)}</span>`).join('')}
+      ${notes.slice(1).map((n, i) => `<span${ch(`${F}.disposition.notes.${i + 1}`)} style="font-size:12px;color:${ENCRE2}">${esc(n)}</span>`).join('')}
     </div>` : '';
 
   const corps = `
@@ -535,32 +566,32 @@ function rendreFiche(g, p){
    3. Tarifs
    ===================================================================== */
 /* Ligne avec pointillés jusqu'au prix */
-function ligneTarif(l){
-  const barre = l.ancienPrix ? `<span style="text-decoration:line-through;color:${GRIS};font-size:13.5px;margin-right:8px">${esc(l.ancienPrix)}</span>` : '';
-  return `<div style="padding:calc(8px*var(--esp)) 0">
+function ligneTarif(l, c){
+  const barre = l.ancienPrix ? `<span${ch(c + '.ancienPrix')} style="text-decoration:line-through;color:${GRIS};font-size:13.5px;margin-right:8px">${esc(l.ancienPrix)}</span>` : '';
+  return `<div${ch(c + '.libelle')} style="padding:calc(8px*var(--esp)) 0">
     <div style="display:flex;align-items:baseline;gap:10px"><span style="font-size:15px;font-weight:600">${esc(l.libelle)}</span>
       <div class="pointilles"><svg width="100%" height="3"><line x1="1.5" y1="1.5" x2="100%" y2="1.5" stroke="${OR_PAPIER}" stroke-width="1.7" stroke-linecap="round" stroke-dasharray="0 4.5"/></svg></div>
-      <span style="white-space:nowrap">${barre}<span style="font-size:16px;font-weight:600;color:var(--deep)">${esc(l.prix)}</span></span></div>
-    ${l.description ? `<div style="font-size:12.5px;color:${ENCRE2};line-height:1.35;margin-top:1px">${esc(l.description)}</div>` : ''}</div>`;
+      <span style="white-space:nowrap">${barre}<span${ch(c + '.prix')} style="font-size:16px;font-weight:600;color:var(--deep)">${esc(l.prix)}</span></span></div>
+    ${l.description ? `<div${ch(c + '.description')} style="font-size:12.5px;color:${ENCRE2};line-height:1.35;margin-top:1px">${esc(l.description)}</div>` : ''}</div>`;
 }
 
 /* Les polaroïds de Flo ont déjà leur cadre : on affiche l'image telle quelle */
-const vignette = (src, l, h, rot = 0) =>
-  `<img src="${img(src)}" alt="" style="width:${l}px;height:${h}px;flex-shrink:0;object-fit:cover;transform:rotate(${rot}deg);box-shadow:0 3px 8px rgba(0,0,0,0.25)">`;
+const vignette = (src, l, h, rot = 0, champ = '') =>
+  `<img${champ ? ch(champ) : ''} src="${img(src)}" alt="" style="width:${l}px;height:${h}px;flex-shrink:0;object-fit:cover;transform:rotate(${rot}deg);box-shadow:0 3px 8px rgba(0,0,0,0.25)">`;
 
 /* Groupe de lignes : si une ligne a un polaroïd, toutes gardent la place de la vignette pour rester alignées */
-function lignesTarif(lignes){
-  if (!lignes.some(l => l.polaroid)) return lignes.map(ligneTarif).join('');
-  return lignes.map(l => `<div style="display:flex;align-items:center;gap:14px;padding:calc(5px*var(--esp)) 0">
-    ${l.polaroid ? vignette(l.polaroid, 56, 51) : '<div style="width:56px;flex-shrink:0"></div>'}
-    <div style="flex-grow:1">${ligneTarif(l)}</div></div>`).join('');
+function lignesTarif(lignes, chemin){
+  if (!lignes.some(l => l.polaroid)) return lignes.map((l, i) => ligneTarif(l, `${chemin}.${i}`)).join('');
+  return lignes.map((l, i) => `<div style="display:flex;align-items:center;gap:14px;padding:calc(5px*var(--esp)) 0">
+    ${l.polaroid ? vignette(l.polaroid, 56, 51, 0, `${chemin}.${i}.polaroid`) : '<div style="width:56px;flex-shrink:0"></div>'}
+    <div style="flex-grow:1">${ligneTarif(l, `${chemin}.${i}`)}</div></div>`).join('');
 }
 
-function titrePartie(num, titre, sousTitre){
+function titrePartie(num, titre, sousTitre, champTitre = '', champSous = ''){
   return `<div style="display:flex;align-items:center;gap:14px;margin-bottom:calc(10px*var(--esp))">
     <div style="width:34px;height:34px;border-radius:50%;background:var(--deep);color:${CREME};display:flex;align-items:center;justify-content:center;font-family:'Abril Fatface',serif;font-size:18px;flex-shrink:0">${num}</div>
-    <div style="display:flex;flex-direction:column"><span style="font-family:'Cinzel',serif;font-size:18px;font-weight:700;letter-spacing:0.1em;color:var(--deep)">${esc(titre)}</span>
-    ${sousTitre ? `<span style="font-size:12.5px;color:${ENCRE2}">${esc(sousTitre)}</span>` : ''}</div></div>`;
+    <div style="display:flex;flex-direction:column"><span${champTitre ? ch(champTitre) : ''} style="font-family:'Cinzel',serif;font-size:18px;font-weight:700;letter-spacing:0.1em;color:var(--deep)">${esc(titre)}</span>
+    ${sousTitre ? `<span${champSous ? ch(champSous) : ''} style="font-size:12.5px;color:${ENCRE2}">${esc(sousTitre)}</span>` : ''}</div></div>`;
 }
 
 const filetEtoile = () =>
@@ -572,24 +603,25 @@ const sousTitreBloc = (t, mt) => `<div style="font-family:'Cinzel',serif;font-si
 function rendreTarifs(g, p){
   const t = p.tarifs || {}, s = t.spectacle || {}, a = t.animations;
   const inclus = s.inclus || [], options = s.options || [];
+  const T = cheminP(p) + '.tarifs', S = T + '.spectacle', A = T + '.animations';
 
   const spectacle = `
-    <div style="margin-top:calc(22px*var(--esp))">${titrePartie(1, 'Le spectacle', s.sousTitrePartie || 'Formule de base et options')}</div>
+    <div style="margin-top:calc(22px*var(--esp))">${titrePartie(1, 'Le spectacle', s.sousTitrePartie || 'Formule de base et options', '', S + '.sousTitrePartie')}</div>
     <div style="border:2px solid var(--deep);border-radius:16px;overflow:hidden;background:rgba(255,252,245,0.55)">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:20px;padding:14px 24px 14px 18px;background:var(--deep);color:${CREME}">
         <div style="display:flex;align-items:center;gap:16px">
-          ${s.polaroid ? vignette(s.polaroid, 84, 76, -3) : ''}
+          ${s.polaroid ? vignette(s.polaroid, 84, 76, -3, S + '.polaroid') : ''}
           <div style="display:flex;flex-direction:column;gap:3px">
-            <span style="font-family:'Cinzel',serif;font-size:19px;font-weight:700;letter-spacing:0.04em">${esc(s.libelle)}</span>
-            ${s.description ? `<span style="font-size:13.5px;max-width:330px">${esc(s.description)}</span>` : ''}</div></div>
+            <span${ch(S + '.libelle')} style="font-family:'Cinzel',serif;font-size:19px;font-weight:700;letter-spacing:0.04em">${esc(s.libelle)}</span>
+            ${s.description ? `<span${ch(S + '.description')} style="font-size:13.5px;max-width:330px">${esc(s.description)}</span>` : ''}</div></div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0">
-          ${s.ancienPrix ? `<span style="font-size:16px;text-decoration:line-through;opacity:.75;margin-bottom:2px">${esc(s.ancienPrix)}</span>` : ''}
-          <span style="font-family:'Abril Fatface',serif;font-size:${String(s.prix || '').length > 8 ? 30 : 44}px;line-height:1;color:#E8CC8C;white-space:nowrap">${esc(s.prix)}</span>
-          ${s.mentionPrix ? `<span style="font-family:'Cinzel',serif;font-size:11px;letter-spacing:0.24em">${esc(maj(s.mentionPrix))}</span>` : ''}</div>
+          ${s.ancienPrix ? `<span${ch(S + '.ancienPrix')} style="font-size:16px;text-decoration:line-through;opacity:.75;margin-bottom:2px">${esc(s.ancienPrix)}</span>` : ''}
+          <span${ch(S + '.prix')} style="font-family:'Abril Fatface',serif;font-size:${String(s.prix || '').length > 8 ? 30 : 44}px;line-height:1;color:#E8CC8C;white-space:nowrap">${esc(s.prix)}</span>
+          ${s.mentionPrix ? `<span${ch(S + '.mentionPrix')} style="font-family:'Cinzel',serif;font-size:11px;letter-spacing:0.24em">${esc(maj(s.mentionPrix))}</span>` : ''}</div>
       </div>
       ${inclus.length || options.length ? `<div style="padding:4px 24px 12px">
-        ${inclus.length ? sousTitreBloc(s.titreInclus || 'Inclus dans la formule', 12) + lignesTarif(inclus) : ''}
-        ${options.length ? sousTitreBloc(s.titreOptions || 'Options', inclus.length ? 8 : 12) + lignesTarif(options) : ''}
+        ${inclus.length ? sousTitreBloc(s.titreInclus || 'Inclus dans la formule', 12) + lignesTarif(inclus, S + '.inclus') : ''}
+        ${options.length ? sousTitreBloc(s.titreOptions || 'Options', inclus.length ? 8 : 12) + lignesTarif(options, S + '.options') : ''}
       </div>` : ''}
     </div>`;
 
@@ -597,24 +629,24 @@ function rendreTarifs(g, p){
   const lignes = a?.lignes || [];
   if (lignes.length){
     animations = `${filetEtoile()}
-    ${titrePartie(2, a.titre || 'Animations supplémentaires', a.conditions)}
+    ${titrePartie(2, a.titre || 'Animations supplémentaires', a.conditions, A + '.titre', A + '.conditions')}
     <div style="border-radius:16px;background:var(--soft);padding:6px 24px 10px">
-      ${lignesTarif(lignes)}
+      ${lignesTarif(lignes, A + '.lignes')}
     </div>`;
   }
 
   const corps = `
     <div style="margin-top:8px;padding-right:180px;font-size:12.5px;line-height:1.5;color:${ENCRE2}">
-      ${esc(nomAdministratif(g.nom))} · ${esc(g.statut)}<br>${esc(g.adresse)} · ${esc(g.codePostal)} ${esc(g.ville)}</div>
-    <div style="display:flex;gap:16px;margin-top:10px">${(g.distinctions || []).map(d => `<img src="${img(d.imageBrun)}" alt="${esc(d.texte)}" style="height:34px">`).join('')}</div>
+      <span${ch('global.nom')}>${esc(nomAdministratif(g.nom))}</span> · <span${ch('global.statut')}>${esc(g.statut)}</span><br><span${ch('global.adresse')}>${esc(g.adresse)} · ${esc(g.codePostal)} ${esc(g.ville)}</span></div>
+    <div style="display:flex;gap:16px;margin-top:10px">${(g.distinctions || []).map((d, i) => `<img${ch(`global.distinctions.${i}.texte`)} src="${img(d.imageBrun)}" alt="${esc(d.texte)}" style="height:34px">`).join('')}</div>
     ${spectacle}
     ${animations}
     <div style="display:flex;flex-direction:column;align-items:center;gap:4px;margin-top:calc(14px*var(--esp));text-align:center">
-      ${t.note ? `<span style="font-size:12.5px;font-weight:500;color:var(--deep)">${esc(t.note)}</span>` : ''}
-      ${g.mentionDeplacement ? `<span style="font-size:12.5px;font-style:italic;color:${ENCRE2}">${esc(g.mentionDeplacement)}</span>` : ''}
-      ${g.formulePolitesse ? `<span style="font-size:14px;font-style:italic">${esc(g.formulePolitesse)}</span>` : ''}</div>
+      ${t.note ? `<span${ch(T + '.note')} style="font-size:12.5px;font-weight:500;color:var(--deep)">${esc(t.note)}</span>` : ''}
+      ${g.mentionDeplacement ? `<span${ch('global.mentionDeplacement')} style="font-size:12.5px;font-style:italic;color:${ENCRE2}">${esc(g.mentionDeplacement)}</span>` : ''}
+      ${g.formulePolitesse ? `<span${ch('global.formulePolitesse')} style="font-size:14px;font-style:italic">${esc(g.formulePolitesse)}</span>` : ''}</div>
     <div style="flex-grow:1"></div>`;
-  return enveloppePapier(g, p, t.titre || 'Tarifs', 72, corps);
+  return enveloppePapier(g, p, t.titre || 'Tarifs', 72, corps, T + '.titre');
 }
 
 /* =====================================================================
@@ -688,8 +720,9 @@ const PALIERS_PLAQUETTE = [
 function appliquerPalier(page, { esp, photo, titre, texte }){
   page.style.setProperty('--esp', esp);
   if (page.closest('[data-doc="plaquette"]')){
-    page.style.setProperty('--photoH', (photo || 360) + 'px');
-    page.style.setProperty('--medT', Math.min(148, Math.round((photo || 360) * .72)) + 'px');
+    const base = +page.dataset.photoh || 360, h = Math.round(base * (photo || 360) / 360);
+    page.style.setProperty('--photoH', h + 'px');
+    page.style.setProperty('--medT', Math.round(Math.min(148, h * .72, 662 * (+page.dataset.photol || 100) / 100 * .42)) + 'px');
     page.style.setProperty('--texteT', (texte || 16) + 'px');
   }
   /* Titre : taille plafonnée par le palier, puis réduite s'il ne tient pas en largeur / hauteur */
@@ -837,6 +870,7 @@ function editeurPrestation(P){
     + section('Couleur d\'accent', roueHtml(), 'Les teintes foncée et claire sont dérivées automatiquement.')
     + section('Photos', `
       <div class="rangee">${champImage('Photo principale', P + '.photoPrincipale')}${champImage('Médaillon', P + '.photoMedaillon', { facultatif: true })}</div>
+      ${reglagesPhotoHtml(P)}
       ${champ('Légende du médaillon', P + '.legendeMedaillon', { facultatif: true })}`)
     + section('Présentation', `
       ${champ('Texte de présentation', P + '.presentation', { long: 5 })}
@@ -844,6 +878,21 @@ function editeurPrestation(P){
     + section('Versions', champ('Titre du bloc', P + '.titreVersions', { facultatif: true, exemple: 'Deux versions', aide: 'Vide : « Deux versions », « Trois versions »… selon le nombre.' }) + liste('Versions', P + '.versions', c => `
       <div class="rangee">${champ('Nom', c + '.nom', { classe: 'etroit' })}${champ('Détail', c + '.detail')}</div>`,
       { nom: '', detail: '' }, { nom: v => v.nom, ajouter: 'Ajouter une version' }));
+}
+
+function champCurseur(label, chemin, min, max, pas, defaut, unite){
+  const v = Number(lire(chemin) ?? defaut);
+  return `<label class="champ curseur"><span>${label} <output>${v}${unite}</output></span>
+    <input type="range" min="${min}" max="${max}" step="${pas}" value="${v}" data-chemin="${chemin}" data-unite="${unite}"></label>`;
+}
+function reglagesPhotoHtml(P){
+  const R = P + '.photoReglages';
+  return `<div class="reglages-photo">
+    <div class="rangee">${champCurseur('Largeur', R + '.largeur', 30, 100, 1, 100, ' %')}${champCurseur('Hauteur', R + '.hauteur', 160, 560, 5, 360, ' px')}</div>
+    <div class="rangee">${champCurseur('Zoom', R + '.zoom', 1, 3, .05, 1, '×')}
+      <div class="champ"><span>&nbsp;</span><button type="button" class="petit" data-action="photo-reinit" data-chemin="${R}">Réinitialiser la photo</button></div></div>
+    <p class="aide">Pour cadrer : faites glisser la photo dans l’aperçu de la plaquette. Une photo en portrait : réduisez la largeur et augmentez la hauteur.</p>
+  </div>`;
 }
 
 function editeurFiche(P){
@@ -905,6 +954,12 @@ function remplirPrestations(){
 function surSaisie(e){
   const el = e.target, chemin = el.dataset.chemin;
   if (!chemin) return;
+  if (el.type === 'range'){
+    ecrire(chemin, Number(el.value));
+    el.closest('.curseur').querySelector('output').textContent = el.value + el.dataset.unite;
+    planifierApercu();
+    return;
+  }
   ecrire(chemin, el.value);
   if (chemin.endsWith('.picto')) el.closest('.picto-ligne').querySelector('.picto-apercu').innerHTML = picto(el.value).replace(/var\(--deep\)/g, '#5a2a20');
   if (/^prestations\.\d+\.nom$/.test(chemin)) remplirPrestations();
@@ -941,6 +996,7 @@ function surClic(e){
       if (!confirm(`Supprimer la prestation « ${prestaCourante().nom} » et ses trois documents ?`)) return;
       DONNEES.prestations.splice(indexPresta(), 1); etat.presta = DONNEES.prestations[0].id; aSauver();
       remplirPrestations(); break;
+    case 'photo-reinit': ecrire(chemin, null); break;
     case 'catalogue-ouvrir': ouvrirCatalogue(chemin || null); return;
     case 'catalogue-garder': garderDansCatalogue(lire(chemin)); break;
     default: return;
@@ -1139,25 +1195,61 @@ function ouvrirBibliotheque(chemin){
   $('#dlgImages').showModal();
 }
 
-/* Les grandes photos sont réduites (2400 px max) pour garder l'app légère ; une page A4 n'en demande pas plus */
-async function preparerImage(fichier){
-  const MAX = 2400;
+/* Compression selon l'usage : c'est ce qui fait le poids des PDF (Chrome y met les images telles quelles).
+   Photo principale : 1 800 px (net en A4, même imprimé) · autres (médaillon, polaroïds, lauriers) : 900 px.
+   JPEG qualité 82 % ; PNG gardé seulement s'il a de la transparence. */
+const TAILLES_IMAGE = { grande: 1800, petite: 900 };
+const usageDe = chemin => /\.photoPrincipale$/.test(chemin || '') ? 'grande' : 'petite';
+
+async function preparerImage(fichier, usage = 'grande'){
+  const MAX = TAILLES_IMAGE[usage] || TAILLES_IMAGE.grande;
   try {
     const bmp = await createImageBitmap(fichier), grand = Math.max(bmp.width, bmp.height);
-    if (grand <= MAX) { bmp.close?.(); return fichier; }
-    const k = MAX / grand, c = document.createElement('canvas');
+    const k = Math.min(1, MAX / grand), c = document.createElement('canvas');
     c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
-    c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height); bmp.close?.();
-    const type = fichier.type === 'image/png' ? 'image/png' : 'image/jpeg';
-    return await new Promise(r => c.toBlob(r, type, .9));
+    const ctx = c.getContext('2d');
+    ctx.drawImage(bmp, 0, 0, c.width, c.height); bmp.close?.();
+    let transparent = false;
+    if (fichier.type !== 'image/jpeg'){
+      const px = ctx.getImageData(0, 0, c.width, c.height).data;
+      for (let i = 3; i < px.length; i += 64) if (px[i] < 250){ transparent = true; break; }
+    }
+    const blob = await new Promise(r => c.toBlob(r, transparent ? 'image/png' : 'image/jpeg', .82));
+    return (k === 1 && fichier.size <= blob.size) ? fichier : blob;
   } catch { return fichier; }
 }
 
-async function importerImages(fichiers){
+/* Recompresse les images déjà importées (bouton dans la fenêtre Sauvegarde) */
+async function optimiserImages(){
+  const b = $('#btnOptimiser'); b.disabled = true; b.textContent = 'Optimisation…';
+  const grandes = new Set(DONNEES.prestations.map(p => p.photoPrincipale).filter(Boolean));
+  let avant = 0, apres = 0, n = 0;
+  try {
+    for (const [id, v] of IMAGES){
+      avant += v.blob.size;
+      const nouveau = await preparerImage(v.blob, grandes.has('img:' + id) ? 'grande' : 'petite');
+      if (nouveau.size < v.blob.size * .9){
+        URL.revokeObjectURL(v.url);
+        Object.assign(v, { blob: nouveau, url: URL.createObjectURL(nouveau) });
+        await bdEcrire('images', id, { blob: nouveau, nom: v.nom, source: v.source });
+        n++;
+      }
+      apres += v.blob.size;
+    }
+    afficher();
+    const mo = o => (o / 1048576).toLocaleString('fr-FR', { maximumFractionDigits: 1 }) + ' Mo';
+    notifier(n ? `${n} image(s) optimisée(s) : ${mo(avant)} → ${mo(apres)}.` : 'Vos images sont déjà optimisées.');
+    ouvrirSauvegarde();
+  } catch (err) {
+    console.error(err); alert('L’optimisation a échoué : ' + err.message);
+  } finally { b.disabled = false; b.textContent = 'Optimiser mes images'; }
+}
+
+async function importerImages(fichiers, usage){
   let derniere = null;
   for (const f of fichiers){
     if (!f.type.startsWith('image/')) continue;
-    const blob = await preparerImage(f), id = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+    const blob = await preparerImage(f, usage), id = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
     IMAGES.set(id, { blob, url: URL.createObjectURL(blob), nom: f.name });
     await bdEcrire('images', id, { blob, nom: f.name });
     derniere = 'img:' + id;
@@ -1202,7 +1294,52 @@ const bdTout   = magasin => bdTransaction(magasin, 'readonly', m => {
 
 /* ---------- Enregistrement automatique ---------- */
 let sauvegardeEnAttente = false, minuterieSauvegarde;
-function aSauver(){
+/* ---------- Historique : annuler / rétablir (le temps de la session) ----------
+   Une rafale de modifications rapprochées (frappe dans un champ, curseur) = une seule étape. */
+const HISTO = { passe: [], futur: [], base: null, minuterie: null };
+function histoInit(){
+  clearTimeout(HISTO.minuterie);
+  Object.assign(HISTO, { passe: [], futur: [], base: JSON.stringify(DONNEES), minuterie: null });
+  majBoutonsHisto();
+}
+function histoNoter(){
+  if (HISTO.base === null) HISTO.base = JSON.stringify(DONNEES);
+  if (!HISTO.minuterie){
+    HISTO.passe.push(HISTO.base);
+    if (HISTO.passe.length > 60) HISTO.passe.shift();
+    HISTO.futur = [];
+  }
+  clearTimeout(HISTO.minuterie);
+  HISTO.minuterie = setTimeout(histoFermer, 700);
+  majBoutonsHisto();
+}
+function histoFermer(){ clearTimeout(HISTO.minuterie); HISTO.minuterie = null; HISTO.base = JSON.stringify(DONNEES); }
+function annuler(){
+  if (HISTO.minuterie) histoFermer();
+  if (!HISTO.passe.length) return;
+  HISTO.futur.push(HISTO.base);
+  restaurer(HISTO.passe.pop());
+}
+function retablir(){
+  if (HISTO.minuterie) histoFermer();
+  if (!HISTO.futur.length) return;
+  HISTO.passe.push(HISTO.base);
+  restaurer(HISTO.futur.pop());
+}
+function restaurer(json){
+  HISTO.base = json;
+  DONNEES = JSON.parse(json);
+  if (!DONNEES.prestations.some(p => p.id === etat.presta)) etat.presta = DONNEES.prestations[0].id;
+  aSauver(false);
+  remplirPrestations(); construireEditeur(); afficher(); majBoutonsHisto();
+}
+function majBoutonsHisto(){
+  $('#btnAnnuler').disabled = !HISTO.passe.length && !HISTO.minuterie;
+  $('#btnRetablir').disabled = !HISTO.futur.length;
+}
+
+function aSauver(noter = true){
+  if (noter) histoNoter();
   DONNEES.derniereModif = Date.now();
   sauvegardeEnAttente = true;
   etatSauvegarde('attente');
@@ -1291,7 +1428,7 @@ async function ouvrirSauvegarde(){
   const nbImages = IMAGES.size;
   $('#infoContenu').textContent = `${DONNEES.prestations.length} prestation${DONNEES.prestations.length > 1 ? 's' : ''}, `
     + `${(DONNEES.catalogue || []).length} option${(DONNEES.catalogue || []).length > 1 ? 's' : ''} enregistrée${(DONNEES.catalogue || []).length > 1 ? 's' : ''}, `
-    + `${nbImages} image${nbImages > 1 ? 's' : ''}.`;
+    + `${nbImages} image${nbImages > 1 ? 's' : ''} (${([...IMAGES.values()].reduce((t, v) => t + v.blob.size, 0) / 1048576).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} Mo).`;
   $('#dlgSauvegarde').showModal();
 }
 
@@ -1347,7 +1484,7 @@ async function importerSauvegarde(fichier){
     etat.presta = DONNEES.prestations[0]?.id;
     sauvegardeEnAttente = false; etatSauvegarde('ok');
     $('#dlgSauvegarde').close();
-    remplirPrestations(); construireEditeur(); afficher();
+    remplirPrestations(); construireEditeur(); afficher(); histoInit();
     notifier('Sauvegarde importée.');
   } catch (err) {
     console.error(err); alert('L’import a échoué : ' + err.message);
@@ -1383,11 +1520,79 @@ async function ajouterDepuisFichier(fichier){
     await sauverMaintenant();
     etat.presta = arrivees[0].id;
     $('#dlgSauvegarde').close();
-    remplirPrestations(); construireEditeur(); afficher();
+    remplirPrestations(); construireEditeur(); afficher(); histoInit();
     notifier(`${arrivees.length} prestation(s) et ${options} option(s) ajoutées.`);
   } catch (err) {
     console.error(err); alert('L’ajout a échoué : ' + err.message);
   }
+}
+
+/* =====================================================================
+   Aperçu interactif
+   ===================================================================== */
+function ongletDe(chemin){
+  if (chemin.startsWith('global')) return 'global';
+  if (/^prestations\.\d+\.fiche\./.test(chemin)) return 'fiche';
+  if (/^prestations\.\d+\.tarifs\./.test(chemin)) return 'tarifs';
+  return 'prestation';
+}
+/* Ouvre le bon onglet et met en évidence le champ qui correspond à l'élément cliqué */
+function localiser(chemin){
+  etat.onglet = ongletDe(chemin);
+  construireEditeur();
+  const conteneur = $('#editeur-contenu');
+  let cible = null, c = chemin;
+  while (c && !cible){
+    cible = conteneur.querySelector(`[data-chemin="${c}"]`) || conteneur.querySelector(`[data-chemin^="${c}."]`);
+    c = c.includes('.') ? c.slice(0, c.lastIndexOf('.')) : '';
+  }
+  if (!cible) return;
+  const bloc = cible.closest('.champ') || cible;
+  bloc.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  bloc.classList.remove('repere'); void bloc.offsetWidth; bloc.classList.add('repere');
+  if (/^(INPUT|TEXTAREA)$/.test(cible.tagName) && cible.type !== 'range') cible.focus({ preventScroll: true });
+}
+
+function initApercuInteractif(){
+  const scene = $('#scene');
+  let glisse = null, finGlisse = 0;
+  const borne = v => Math.max(0, Math.min(100, v));
+  scene.addEventListener('pointerdown', e => {
+    const cadre = e.target.closest('[data-cadrage]');
+    if (!cadre || e.button) return;
+    const image = cadre.querySelector('.photo-img'), rect = cadre.getBoundingClientRect();
+    glisse = { x0: e.clientX, y0: e.clientY, P: cadre.dataset.cadrage, R: reglagesPhoto(lire(cadre.dataset.cadrage)), image, l: rect.width, h: rect.height, bouge: false, cadre, id: e.pointerId };
+  });
+  scene.addEventListener('pointermove', e => {
+    if (!glisse) return;
+    const dx = e.clientX - glisse.x0, dy = e.clientY - glisse.y0;
+    if (!glisse.bouge){
+      if (Math.hypot(dx, dy) < 4) return;
+      glisse.bouge = true;
+      glisse.cadre.setPointerCapture(glisse.id);
+      glisse.cadre.classList.add('glisse');
+    }
+    e.preventDefault();
+    const R = glisse.R, v = 140 / R.zoom;
+    glisse.R2 = { ...R, x: borne(R.x - dx / glisse.l * v), y: borne(R.y - dy / glisse.h * v) };
+    glisse.image.style.cssText = stylePhotoImg(glisse.R2);
+  });
+  const fin = () => {
+    if (!glisse) return;
+    const g = glisse; glisse = null;
+    g.cadre.classList.remove('glisse');
+    if (!g.bouge || !g.R2) return;
+    finGlisse = Date.now();
+    ecrire(g.P + '.photoReglages', { ...(lire(g.P + '.photoReglages') || {}), x: Math.round(g.R2.x), y: Math.round(g.R2.y) });
+    afficher();
+  };
+  scene.addEventListener('pointerup', fin);
+  scene.addEventListener('pointercancel', fin);
+  scene.addEventListener('click', e => {
+    if (Date.now() - finGlisse < 400) return;
+    const el = e.target.closest('[data-champ]');
+    if (el) localiser(el.dataset.champ);
+  });
 }
 
 /* =====================================================================
@@ -1409,7 +1614,18 @@ async function init(){
     }
     if (qi.get('presta')) etat.presta = qi.get('presta');
   } else await chargerStockage();
+  histoInit();
   remplirPrestations();
+  $('#btnAnnuler').onclick = annuler;
+  $('#btnRetablir').onclick = retablir;
+  document.addEventListener('keydown', e => {
+    if (!(e.ctrlKey || e.metaKey) || document.querySelector('dialog[open]')) return;
+    const k = e.key.toLowerCase();
+    if (k === 'z' && !e.shiftKey){ e.preventDefault(); annuler(); }
+    else if (k === 'y' || (k === 'z' && e.shiftKey)){ e.preventDefault(); retablir(); }
+  });
+  initApercuInteractif();
+  $('#btnOptimiser').onclick = optimiserImages;
   $('#selPresta').onchange = e => { etat.presta = e.target.value; construireEditeur(); afficher(); };
   document.querySelectorAll('.onglets button').forEach(b => b.onclick = () => { etat.doc = b.dataset.doc; afficher(); });
   document.querySelectorAll('.onglets-ed button').forEach(b => b.onclick = () => {
@@ -1433,11 +1649,11 @@ async function init(){
   $('#cat-recherche').oninput = remplirCatalogue;
   $('#dlgCatalogue').addEventListener('click', e => { if (e.target === $('#dlgCatalogue')) $('#dlgCatalogue').close(); });
   $('#biblio-grille').onclick = e => { const b = e.target.closest('.biblio-item'); if (b) choisirImage(b.dataset.ref); };
-  $('#biblio-fichier').onchange = async e => { const ref = await importerImages(e.target.files); e.target.value = ''; if (ref) choisirImage(ref); };
+  $('#biblio-fichier').onchange = async e => { const ref = await importerImages(e.target.files, usageDe(cheminImage)); e.target.value = ''; if (ref) choisirImage(ref); };
   $('#dlgImages').addEventListener('click', e => { if (e.target === $('#dlgImages')) $('#dlgImages').close(); });
   /* glisser-déposer une image sur la bibliothèque */
   $('#dlgImages').addEventListener('dragover', e => e.preventDefault());
-  $('#dlgImages').addEventListener('drop', async e => { e.preventDefault(); const ref = await importerImages(e.dataTransfer.files); if (ref) choisirImage(ref); });
+  $('#dlgImages').addEventListener('drop', async e => { e.preventDefault(); const ref = await importerImages(e.dataTransfer.files, usageDe(cheminImage)); if (ref) choisirImage(ref); });
 
   window.addEventListener('resize', () => { ajusterEchelle(); });
   window.addEventListener('beforeunload', e => { if (sauvegardeEnAttente) { sauverMaintenant(); e.preventDefault(); e.returnValue = ''; } });
