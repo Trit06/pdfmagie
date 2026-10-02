@@ -43,6 +43,17 @@ a{color:inherit}
 .feuille .photo-cadre.glisse{cursor:grabbing}
 .champ.repere{animation:repere 1.6s ease-out}
 @keyframes repere{0%,40%{background:#fde7a8;box-shadow:0 0 0 6px #fde7a8}100%{background:transparent;box-shadow:0 0 0 6px transparent}}
+.roue-teintes{gap:14px!important}
+.teinte-bloc{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11.5px;color:#5b4d3f}
+.teinte-bloc .teinte{position:relative;display:block;width:38px;height:28px;border-radius:5px;border:1px solid rgba(0,0,0,.2);cursor:pointer;box-shadow:inset 0 0 0 2px rgba(255,255,255,.35)}
+.teinte-bloc .teinte:hover{outline:2px solid #D8B46A}
+.teinte-bloc input[type=color]{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;border:0;padding:0}
+.icone.mini{width:18px;height:18px;font-size:12px;vertical-align:-2px}
+.nuancier>span i{font-weight:400;font-style:normal;color:#9a8b7a;font-size:11px;margin-left:4px}
+.segments{display:flex;border:1px solid #cdbfa9;border-radius:7px;overflow:hidden;width:max-content;background:#fffdf8}
+.segment{display:flex;align-items:center;justify-content:center;width:40px;height:32px;border:0;background:none;color:#5b4d3f;cursor:pointer}
+.segment+.segment{border-left:1px solid #e1d5c2}
+.segment[aria-pressed="true"]{background:#2A211A;color:#F6EEDD}
 .curseur output{font-weight:400;color:#7a5a2c;margin-left:4px}
 .curseur input[type=range]{width:100%;accent-color:#A8823F}
 .reglages-photo{padding:8px 10px 2px;margin-bottom:10px;border:1px solid #e1d5c2;border-radius:8px;background:#fbf7ef}
@@ -387,7 +398,13 @@ function teintes(hex){
   const dark = t => 'rgb(' + c.map(v => Math.round(v * (1 - t))).join(',') + ')';
   return { accent: hex, soft: mix(.88), light: mix(.7), deep: dark(.42) };
 }
-const styleTeintes = p => { const t = teintes(p.accent); return `--accent:${t.accent};--soft:${t.soft};--light:${t.light};--deep:${t.deep}`; };
+/* Teintes utilisées : surcharge manuelle éventuelle (p.teintes), sinon calculées depuis l'accent */
+function teintesP(p){
+  const t = teintes(p.accent || '#A3162B'), m = p.teintes || {};
+  return { ...t, deep: m.deep || t.deep, soft: m.soft || t.soft };
+}
+const styleTeintes = p => { const t = teintesP(p); return `--accent:${t.accent};--soft:${t.soft};--light:${t.light};--deep:${t.deep}`; };
+const versHex = c => c.startsWith('#') ? c : '#' + c.match(/\d+/g).slice(0, 3).map(v => (+v).toString(16).padStart(2, '0')).join('');
 
 const ETOILE = 'M12 0 L13.6 10.4 L24 12 L13.6 13.6 L12 24 L10.4 13.6 L0 12 L10.4 10.4 Z';
 const etoile = (taille, couleur = OR, opacite = 1) =>
@@ -503,12 +520,12 @@ function rendrePlaquette(g, p){
       <div${ch(P + '.photoMedaillon')} style="position:absolute;right:-16px;bottom:-34px;padding:4px;border-radius:50%;background:${OR};box-shadow:0 10px 24px rgba(0,0,0,0.4)">
         <img src="${img(p.photoMedaillon)}" alt="${esc(p.legendeMedaillon)}" style="width:var(--medT,148px);height:var(--medT,148px);border-radius:50%;object-fit:cover;border:4px solid var(--deep)">
       </div>
-      ${p.legendeMedaillon ? `<div${ch(P + '.legendeMedaillon')} style="position:absolute;right:calc(var(--medT,148px) + 2px);bottom:-30px;white-space:nowrap;font-family:'Cinzel',serif;font-size:12px;letter-spacing:0.2em;color:${OR}">${esc(maj(p.legendeMedaillon))}</div>` : ''}` : ''}
+      ${p.legendeMedaillon ? `<div${ch(P + '.legendeMedaillon')} style="position:absolute;right:var(--legR,110px);bottom:-30px;white-space:nowrap;font-family:'Cinzel',serif;font-size:12px;letter-spacing:0.2em;color:${OR}">${esc(maj(p.legendeMedaillon))}</div>` : ''}` : ''}
     </div>
     <div style="display:flex;gap:40px;margin-top:calc(48px*var(--esp))">
       ${(g.distinctions || []).map((d, i) => `<img${ch(`global.distinctions.${i}.texte`)} src="${img(d.imageOr)}" alt="${esc(d.texte)}" style="height:54px">`).join('')}
     </div>
-    <p${ch(P + '.presentation')} style="margin:calc(20px*var(--esp)) 0 0;max-width:610px;text-align:center;font-size:var(--texteT,16px);line-height:1.55;white-space:pre-line">${esc(p.presentation)}</p>
+    <p${ch(P + '.presentation')} style="margin:calc(20px*var(--esp)) 0 0;width:100%;max-width:610px;text-align:${p.alignPresentation || 'center'};${p.alignPresentation === 'justify' ? 'hyphens:auto;' : ''}font-size:var(--texteT,16px);line-height:1.55;white-space:pre-line">${esc(p.presentation)}</p>
     ${infos.length ? `<div style="display:flex;margin-top:calc(24px*var(--esp));width:100%;border-top:1px solid ${OR};border-bottom:1px solid ${OR}">${infos.join(sep)}</div>` : ''}
     <div style="flex-grow:1"></div>
     <div style="font-size:13px;text-align:center">${contactLigne(g)}</div>
@@ -717,12 +734,20 @@ const PALIERS_PLAQUETTE = [
   { esp: .6, photo: 180, titre: 72 }, { esp: .6, photo: 180, titre: 72, texte: 15 },
   { esp: .55, photo: 170, titre: 68, texte: 14.5 }, { esp: .5, photo: 160, titre: 64, texte: 14 }];
 
+/* Position de la légende : bord gauche du médaillon à la hauteur du texte (le cercle s'y resserre), + 6 px */
+function legendeDroite(medT){
+  const r = (medT + 8) / 2, centre = r - 16, dy = r - 11;
+  return Math.round(centre + Math.sqrt(Math.max(0, r * r - dy * dy)) + 6);
+}
+
 function appliquerPalier(page, { esp, photo, titre, texte }){
   page.style.setProperty('--esp', esp);
   if (page.closest('[data-doc="plaquette"]')){
     const base = +page.dataset.photoh || 360, h = Math.round(base * (photo || 360) / 360);
     page.style.setProperty('--photoH', h + 'px');
-    page.style.setProperty('--medT', Math.round(Math.min(148, h * .72, 662 * (+page.dataset.photol || 100) / 100 * .42)) + 'px');
+    const medT = Math.round(Math.min(148, h * .72, 662 * (+page.dataset.photol || 100) / 100 * .42));
+    page.style.setProperty('--medT', medT + 'px');
+    page.style.setProperty('--legR', legendeDroite(medT) + 'px');
     page.style.setProperty('--texteT', (texte || 16) + 'px');
   }
   /* Titre : taille plafonnée par le palier, puis réduite s'il ne tient pas en largeur / hauteur */
@@ -867,17 +892,27 @@ function editeurPrestation(P){
     + section('Titre', `
       ${champ('Nom', P + '.nom')}
       ${champ('Sous-titre', P + '.sousTitre', { exemple: 'Spectacle de magie familial' })}`)
-    + section('Couleur d\'accent', roueHtml(), 'Les teintes foncée et claire sont dérivées automatiquement.')
+    + section('Couleur d\'accent', roueHtml(), 'Les teintes foncée et pâle sont calculées depuis l’accent ; vous pouvez aussi les choisir vous-même.')
     + section('Photos', `
       <div class="rangee">${champImage('Photo principale', P + '.photoPrincipale')}${champImage('Médaillon', P + '.photoMedaillon', { facultatif: true })}</div>
       ${reglagesPhotoHtml(P)}
       ${champ('Légende du médaillon', P + '.legendeMedaillon', { facultatif: true })}`)
     + section('Présentation', `
       ${champ('Texte de présentation', P + '.presentation', { long: 5 })}
+      ${choixAlignement(P + '.alignPresentation')}
       <div class="rangee">${champ('Durée', P + '.duree', { exemple: '50 min', classe: 'etroit' })}${champ('Lien vidéo', P + '.video', { facultatif: true })}</div>`)
     + section('Versions', champ('Titre du bloc', P + '.titreVersions', { facultatif: true, exemple: 'Deux versions', aide: 'Vide : « Deux versions », « Trois versions »… selon le nombre.' }) + liste('Versions', P + '.versions', c => `
       <div class="rangee">${champ('Nom', c + '.nom', { classe: 'etroit' })}${champ('Détail', c + '.detail')}</div>`,
       { nom: '', detail: '' }, { nom: v => v.nom, ajouter: 'Ajouter une version' }));
+}
+
+function choixAlignement(chemin){
+  const v = lire(chemin) || 'center';
+  const choix = [['left', 'À gauche', '<path d="M3 5h18M3 10h12M3 15h18M3 20h12"/>'], ['center', 'Centré', '<path d="M3 5h18M6 10h12M3 15h18M6 20h12"/>'],
+                 ['right', 'À droite', '<path d="M3 5h18M9 10h12M3 15h18M9 20h12"/>'], ['justify', 'Justifié', '<path d="M3 5h18M3 10h18M3 15h18M3 20h18"/>']];
+  return `<div class="champ"><span>Alignement du texte</span><div class="segments">${choix.map(([k, nom, svg]) =>
+    `<button type="button" class="segment" data-action="aligner" data-chemin="${chemin}" data-valeur="${k}" aria-pressed="${k === v}" title="${nom}">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">${svg}</svg></button>`).join('')}</div></div>`;
 }
 
 function champCurseur(label, chemin, min, max, pas, defaut, unite){
@@ -954,6 +989,12 @@ function remplirPrestations(){
 function surSaisie(e){
   const el = e.target, chemin = el.dataset.chemin;
   if (!chemin) return;
+  if (el.type === 'color'){
+    ecrire(chemin, el.value);
+    el.closest('.teinte').style.background = el.value;
+    planifierApercu();
+    return;
+  }
   if (el.type === 'range'){
     ecrire(chemin, Number(el.value));
     el.closest('.curseur').querySelector('output').textContent = el.value + el.dataset.unite;
@@ -997,6 +1038,8 @@ function surClic(e){
       DONNEES.prestations.splice(indexPresta(), 1); etat.presta = DONNEES.prestations[0].id; aSauver();
       remplirPrestations(); break;
     case 'photo-reinit': ecrire(chemin, null); break;
+    case 'teinte-auto': ecrire(chemin, null); break;
+    case 'aligner': ecrire(chemin, b.dataset.valeur); break;
     case 'catalogue-ouvrir': ouvrirCatalogue(chemin || null); return;
     case 'catalogue-garder': garderDansCatalogue(lire(chemin)); break;
     default: return;
@@ -1056,9 +1099,20 @@ function roueHtml(){
     <div class="roue-droite">
       <label class="champ"><span>Luminosité</span><input type="range" class="roue-lum" min="8" max="70" step="1"></label>
       <label class="champ"><span>Code couleur</span><input type="text" class="roue-hex" maxlength="7" spellcheck="false"></label>
-      <div class="nuancier"><span>Teintes dérivées</span><div class="roue-teintes"></div></div>
+      <div class="nuancier"><span>Teintes utilisées <i>cliquer pour modifier</i></span><div class="roue-teintes"></div></div>
       <div class="nuancier"><span>Couleurs prévues</span><div>${COULEURS_PREVUES.map(([h, n]) => `<button type="button" class="pastille" data-hex="${h}" title="${n}" style="background:${h}"></button>`).join('')}</div></div>
     </div></div>`;
+}
+
+/* Pastilles des teintes : un sélecteur de couleur chacune ; ↺ pour revenir au calcul automatique */
+function teintesHtml(P, hex){
+  const presta = lire(P), t = teintes(hex), m = presta?.teintes || {};
+  return [['deep', 'Foncée', 'fonds, bandeaux, titres'], ['soft', 'Pâle', 'blocs et encadrés clairs']].map(([k, nom, usage]) => {
+    const c = versHex(m[k] || t[k]);
+    return `<div class="teinte-bloc"><label class="teinte" title="${nom} : ${usage}" style="background:${c}">
+        <input type="color" value="${c}" data-chemin="${P}.teintes.${k}"></label>
+      <span>${nom}${m[k] ? ` <button type="button" class="icone mini" data-action="teinte-auto" data-chemin="${P}.teintes.${k}" title="Revenir à la teinte calculée">↺</button>` : ''}</span></div>`;
+  }).join('');
 }
 
 function initRoue(){
@@ -1086,9 +1140,7 @@ function initRoue(){
     lum.value = Math.round(hsl.l * 100);
     lum.style.background = `linear-gradient(90deg, ${hslVersHex(hsl.h, hsl.s, .08)}, ${hslVersHex(hsl.h, hsl.s, .4)}, ${hslVersHex(hsl.h, hsl.s, .7)})`;
     if (source !== 'hex') hexIn.value = hex;
-    const t = teintes(hex);
-    $('.roue-teintes').innerHTML = [['Foncée', t.deep], ['Accent', hex], ['Claire', t.light], ['Pâle', t.soft]]
-      .map(([n, c]) => `<span class="teinte" style="background:${c}" title="${n}"></span>`).join('');
+    $('.roue-teintes').innerHTML = teintesHtml(P.replace(/\.accent$/, ''), hex);
     if (source){ ecrire(P, hex); planifierApercu(); }
   }
   function choisir(ev){
