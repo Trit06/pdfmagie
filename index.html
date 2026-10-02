@@ -426,7 +426,7 @@ function enveloppePapier(g, p, surtitre, tailleTitre, corps){
   <div style="position:absolute;left:66px;right:250px;top:34px;height:148px;display:flex;align-items:center">
     <div style="display:flex;flex-direction:column;gap:2px;width:100%;min-width:0">
       <div style="font-family:'Cinzel',serif;font-size:14px;letter-spacing:0.38em;color:${OR}">${esc(maj(surtitre))}</div>
-      <h1 data-hmax="94" style="margin:0;font-family:'Abril Fatface',serif;font-weight:400;font-size:${tailleTitre}px;line-height:1;color:${CREME}">${esc(p.nom)}</h1>
+      <h1 data-hmax="94" data-tmax="${tailleTitre}" style="margin:0;font-family:'Abril Fatface',serif;font-weight:400;font-size:${tailleTitre}px;line-height:1;color:${CREME}">${esc(p.nom)}</h1>
       <div style="display:flex;align-items:center;gap:12px;margin-top:4px">${etoile(9)}<span style="font-family:'Cinzel',serif;font-size:15px;letter-spacing:0.22em;color:${OR}">${esc(maj(p.sousTitre))}</span></div>
     </div>
   </div>
@@ -464,20 +464,20 @@ function rendrePlaquette(g, p){
   ${cadreDore()}
   <div class="corps" style="position:relative;width:100%;height:100%;padding:60px 66px 52px;display:flex;flex-direction:column;align-items:center">
     <div style="font-family:'Cinzel',serif;font-size:14px;letter-spacing:0.42em;color:${OR}">${esc(maj(g.nomScene))} PRÉSENTE</div>
-    <h1 data-hmax="200" style="margin:6px 0 0;max-width:100%;font-family:'Abril Fatface',serif;font-weight:400;font-size:128px;line-height:1;color:${CREME};text-align:center">${esc(p.nom)}</h1>
+    <h1 data-hmax="200" data-tmax="128" style="margin:6px 0 0;max-width:100%;font-family:'Abril Fatface',serif;font-weight:400;font-size:128px;line-height:1;color:${CREME};text-align:center">${esc(p.nom)}</h1>
     <div style="display:flex;align-items:center;gap:14px;margin-top:6px">${etoile(10)}<span style="font-family:'Cinzel',serif;font-size:17px;letter-spacing:0.22em;color:${OR}">${esc(maj(p.sousTitre))}</span>${etoile(10)}</div>
     <div style="position:relative;width:100%;margin-top:calc(28px*var(--esp))">
-      <img src="${img(p.photoPrincipale)}" alt="${esc(g.nomScene)} — ${esc(p.nom)}" style="width:100%;height:360px;object-fit:cover;object-position:center 28%;border-radius:16px;border:2px solid ${OR};box-shadow:0 18px 40px rgba(0,0,0,0.4)">
+      <img src="${img(p.photoPrincipale)}" alt="${esc(g.nomScene)} — ${esc(p.nom)}" style="width:100%;height:var(--photoH,360px);object-fit:cover;object-position:center 28%;border-radius:16px;border:2px solid ${OR};box-shadow:0 18px 40px rgba(0,0,0,0.4)">
       ${p.photoMedaillon ? `
       <div style="position:absolute;right:-16px;bottom:-34px;padding:4px;border-radius:50%;background:${OR};box-shadow:0 10px 24px rgba(0,0,0,0.4)">
-        <img src="${img(p.photoMedaillon)}" alt="${esc(p.legendeMedaillon)}" style="width:148px;height:148px;border-radius:50%;object-fit:cover;border:4px solid var(--deep)">
+        <img src="${img(p.photoMedaillon)}" alt="${esc(p.legendeMedaillon)}" style="width:var(--medT,148px);height:var(--medT,148px);border-radius:50%;object-fit:cover;border:4px solid var(--deep)">
       </div>
       ${p.legendeMedaillon ? `<div style="position:absolute;right:150px;bottom:-30px;font-family:'Cinzel',serif;font-size:12px;letter-spacing:0.2em;color:${OR}">${esc(maj(p.legendeMedaillon))}</div>` : ''}` : ''}
     </div>
     <div style="display:flex;gap:40px;margin-top:calc(48px*var(--esp))">
       ${(g.distinctions || []).map(d => `<img src="${img(d.imageOr)}" alt="${esc(d.texte)}" style="height:54px">`).join('')}
     </div>
-    <p style="margin:calc(20px*var(--esp)) 0 0;max-width:610px;text-align:center;font-size:16px;line-height:1.6">${esc(p.presentation)}</p>
+    <p style="margin:calc(20px*var(--esp)) 0 0;max-width:610px;text-align:center;font-size:var(--texteT,16px);line-height:1.55;white-space:pre-line">${esc(p.presentation)}</p>
     ${infos.length ? `<div style="display:flex;margin-top:calc(24px*var(--esp));width:100%;border-top:1px solid ${OR};border-bottom:1px solid ${OR}">${infos.join(sep)}</div>` : ''}
     <div style="flex-grow:1"></div>
     <div style="font-size:13px;text-align:center">${contactLigne(g)}</div>
@@ -674,19 +674,37 @@ function ajusterEchelle(){
   zone.style.setProperty('--echelle', Math.max(.25, e).toFixed(3));
 }
 
-/* Ajuste l'espacement vertical pour tenir sur une page A4, puis signale ce qui déborde encore */
+/* Ajuste la page pour tenir sur une page A4, puis signale ce qui déborde encore.
+   Documents papier : on resserre l'espacement. Plaquette (texte de présentation long) :
+   espacement, puis photo principale et titre plus petits, puis en dernier le texte. */
 const ESPACEMENTS = [1, .9, .8, .7, .6, .5];
+const PALIERS_PLAQUETTE = [
+  { esp: 1 }, { esp: .9 }, { esp: .8 },
+  { esp: .8, photo: 330, titre: 118 }, { esp: .8, photo: 300, titre: 108 }, { esp: .75, photo: 270, titre: 100 },
+  { esp: .7, photo: 240, titre: 92 }, { esp: .7, photo: 215, titre: 84 }, { esp: .65, photo: 195, titre: 78 },
+  { esp: .6, photo: 180, titre: 72 }, { esp: .6, photo: 180, titre: 72, texte: 15 },
+  { esp: .55, photo: 170, titre: 68, texte: 14.5 }, { esp: .5, photo: 160, titre: 64, texte: 14 }];
+
+function appliquerPalier(page, { esp, photo, titre, texte }){
+  page.style.setProperty('--esp', esp);
+  if (page.closest('[data-doc="plaquette"]')){
+    page.style.setProperty('--photoH', (photo || 360) + 'px');
+    page.style.setProperty('--medT', Math.min(148, Math.round((photo || 360) * .72)) + 'px');
+    page.style.setProperty('--texteT', (texte || 16) + 'px');
+  }
+  /* Titre : taille plafonnée par le palier, puis réduite s'il ne tient pas en largeur / hauteur */
+  page.querySelectorAll('h1[data-hmax]').forEach(h => {
+    let t = Math.min(+h.dataset.tmax, titre || Infinity);
+    h.style.fontSize = t + 'px';
+    while (t > 28 && (h.scrollWidth > h.clientWidth + 1 || h.offsetHeight > +h.dataset.hmax)) h.style.fontSize = (t -= 2) + 'px';
+  });
+}
 let jeton = 0;
 async function verifierDebordements(){
   const j = ++jeton;
   await document.fonts.ready;
   await Promise.all([...document.querySelectorAll('#scene img')].map(i => i.complete ? 0 : new Promise(r => { i.onload = i.onerror = r; })));
   if (j !== jeton) return;
-  /* Titres longs : on réduit la taille jusqu'à tenir dans la largeur et la hauteur prévues */
-  document.querySelectorAll('.feuille h1[data-hmax]').forEach(h => {
-    let t = parseFloat(h.style.fontSize);
-    while (t > 28 && (h.scrollWidth > h.clientWidth + 1 || h.offsetHeight > +h.dataset.hmax)) h.style.fontSize = (t -= 2) + 'px';
-  });
   const trop = [], serres = [];
   document.querySelectorAll('.feuille').forEach(f => {
     const page = f.querySelector('.page'), c = f.querySelector('.corps');
@@ -696,15 +714,22 @@ async function verifierDebordements(){
       const limite = r.bottom - parseFloat(getComputedStyle(c).paddingBottom) * z;
       return Math.max(...[...c.children].map(e => e.getBoundingClientRect().bottom)) > limite + 0.5;
     };
-    let esp = ESPACEMENTS[0];
-    for (esp of ESPACEMENTS){ page.style.setProperty('--esp', esp); if (!deborde()) break; }
+    const paliers = f.dataset.doc === 'plaquette' ? PALIERS_PLAQUETTE : ESPACEMENTS.map(esp => ({ esp }));
+    let n = 0;
+    for (; n < paliers.length; n++){
+      appliquerPalier(page, paliers[n]);
+      if (!deborde()) break;
+    }
+    n = Math.min(n, paliers.length - 1);
     f.classList.toggle('debord', deborde());
-    if (deborde()) trop.push(DOCS[f.dataset.doc].nom);
-    else if (esp < 1) serres.push(`${DOCS[f.dataset.doc].nom} (${Math.round(esp * 100)} %)`);
+    const nom = DOCS[f.dataset.doc].nom, pal = paliers[n];
+    if (deborde()) trop.push(nom);
+    else if (pal.photo) serres.push(`${nom} (photo ${Math.round(pal.photo / 360 * 100)} %, titre ${pal.titre} px${pal.texte < 16 ? `, texte ${pal.texte} px` : ''})`);
+    else if (pal.esp < 1) serres.push(`${nom} (espacement ${Math.round(pal.esp * 100)} %)`);
   });
   $('#alerte').textContent =
     (trop.length ? `⚠ Contenu trop long pour une page A4 : ${trop.join(', ')} (bordure orange). Raccourcissez les textes. ` : '') +
-    (serres.length ? `Espacement resserré automatiquement : ${serres.join(', ')}.` : '');
+    (serres.length ? `Ajusté automatiquement : ${serres.join(' · ')}.` : '');
 }
 
 async function exporterPdf(){
