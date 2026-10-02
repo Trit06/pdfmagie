@@ -30,6 +30,12 @@ a{color:inherit}
 .btn-pdf{font:inherit;font-size:14px;font-weight:600;padding:7px 16px;border:0;border-radius:8px;background:var(--ui-gold);color:#2A211A;cursor:pointer}
 .btn-pdf:hover{filter:brightness(1.08)}
 .btn-pdf:disabled{opacity:.5;cursor:default;filter:none}
+.groupe-pdf{display:flex}
+.groupe-pdf #btnPdf{border-radius:8px 0 0 8px}
+.btn-pdf-plus{border-radius:0 8px 8px 0;padding:7px 10px;border-left:1px solid rgba(42,33,26,.35)}
+#dlgCombine{width:min(440px,92vw);padding:0;border:0;border-radius:12px;background:#F3ECDF;color:#2A211A;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+#dlgCombine::backdrop{background:rgba(20,14,10,.6)}
+#combineListe{margin:6px 0 10px}
 .etat-sauvegarde{font-size:12.5px;opacity:.75}
 .etat-sauvegarde[data-etat="erreur"]{color:#ffb08a;opacity:1;font-weight:600}
 .btn-barre{font:inherit;font-size:14px;padding:6px 14px;border:1px solid #6b5c4c;border-radius:8px;background:#3a2f26;color:var(--ui-text);cursor:pointer}
@@ -191,6 +197,7 @@ button.petit.danger{color:#9b2335;border-color:#d9a8a8}
 @media print{
   html,body{background:none}
   .barre,.feuille-etiquette,.editeur,dialog,#notif{display:none!important}
+  .feuille-bloc:has(.feuille:not(.a-imprimer)){display:none}
   .app,.espace{display:block;height:auto}
   .scene{display:block;padding:0;overflow:visible}
   .feuille{box-shadow:none;width:auto;height:auto;overflow:visible}
@@ -218,7 +225,7 @@ button.petit.danger{color:#9b2335;border-color:#d9a8a8}
   <span class="histo"><button class="btn-barre" id="btnAnnuler" title="Annuler (Ctrl+Z)" disabled>↶</button><button class="btn-barre" id="btnRetablir" title="Rétablir (Ctrl+Y)" disabled>↷</button></span>
   <span class="etat-sauvegarde" id="etatSauvegarde" data-etat="attente">Chargement…</span>
   <button class="btn-barre" id="btnSauvegarde">Sauvegarde</button>
-  <button class="btn-pdf" id="btnPdf">Exporter en PDF</button>
+  <span class="groupe-pdf"><button class="btn-pdf" id="btnPdf">Exporter en PDF</button><button class="btn-pdf btn-pdf-plus" id="btnPdfPlus" title="Un seul PDF de plusieurs pages…">▾</button></span>
   <div class="alerte" id="alerte"></div>
 </div>
 
@@ -235,6 +242,19 @@ button.petit.danger{color:#9b2335;border-color:#d9a8a8}
   <main class="scene" id="scene"></main>
 </div>
 </div>
+
+<dialog id="dlgCombine">
+  <div class="biblio-tete">
+    <h2>Un PDF de plusieurs pages</h2>
+    <button type="button" class="petit" onclick="this.closest('dialog').close()">Fermer</button>
+  </div>
+  <div class="sauv-corps">
+    <p>Cochez les documents à réunir dans un même fichier :</p>
+    <div id="combineListe"></div>
+    <p class="aide">Nom du fichier : <b id="combineNom"></b></p>
+    <div class="sauv-actions"><button type="button" class="btn-import" id="btnCombine">Exporter</button></div>
+  </div>
+</dialog>
 
 <dialog id="dlgSauvegarde">
   <div class="biblio-tete">
@@ -780,7 +800,7 @@ function afficher(){
   document.querySelectorAll('.onglets button').forEach(b => b.setAttribute('aria-pressed', b.dataset.doc === etat.doc));
   $('#btnPdf').textContent = etat.doc === 'tous' ? 'Exporter les 3 PDF' : `Exporter « ${DOCS[etat.doc].nom} » en PDF`;
   ajusterEchelle();
-  verifierDebordements();
+  return verifierDebordements();
 }
 let minuterie;
 const planifierApercu = () => { clearTimeout(minuterie); minuterie = setTimeout(afficher, 180); };
@@ -863,16 +883,48 @@ async function verifierDebordements(){
 
 /* Une fenêtre d'impression par document (un PDF = un document).
    « Les trois » : les trois fenêtres s'ouvrent l'une après l'autre, chacune avec son nom de fichier. */
-function imprimerDocument(k){
+function imprimerDocument(k){ return imprimerPages([k], `${prestaCourante().nom} - ${DOCS[k].numero} ${DOCS[k].nom}`); }
+
+/* « a », « a et b », « a, b et c » */
+const listeFr = l => l.length < 2 ? l.join('') : l.slice(0, -1).join(', ') + ' et ' + l[l.length - 1];
+
+/* Imprime les documents demandés dans un seul PDF (une page chacun), avec le nom de fichier proposé */
+function imprimerPages(docs, nomFichier){
   return new Promise(fini => {
-    const p = prestaCourante(), titre = document.title;
-    document.querySelectorAll('.feuille').forEach(f => f.classList.toggle('a-imprimer', f.dataset.doc === k));
-    document.title = `${p.nom} - ${DOCS[k].numero} ${DOCS[k].nom}`;   // nom de fichier proposé : « Illusion - 01 Plaquette »
+    const titre = document.title;
+    document.querySelectorAll('.feuille').forEach(f => f.classList.toggle('a-imprimer', docs.includes(f.dataset.doc)));
+    document.title = nomFichier;
     let fait = false;
     const apres = () => { if (fait) return; fait = true; document.title = titre; setTimeout(fini, 400); };
     window.addEventListener('afterprint', apres, { once: true });
     window.print();
   });
+}
+
+/* PDF de plusieurs pages : on coche les documents voulus */
+const nomCombine = docs => `${prestaCourante().nom} - ${listeFr(docs.map(k => DOCS[k].nom))}`;
+function ouvrirCombine(){
+  const coches = () => [...document.querySelectorAll('#dlgCombine input:checked')].map(c => c.value);
+  const maj = () => {
+    const d = coches();
+    $('#combineNom').textContent = d.length ? (d.length === 1 ? `${prestaCourante().nom} - ${DOCS[d[0]].numero} ${DOCS[d[0]].nom}` : nomCombine(d)) + '.pdf' : '—';
+    $('#btnCombine').disabled = !d.length;
+    $('#btnCombine').textContent = d.length > 1 ? `Exporter un PDF de ${d.length} pages` : 'Exporter le PDF';
+  };
+  $('#combineListe').innerHTML = Object.entries(DOCS).map(([k, d]) =>
+    `<label class="case"><input type="checkbox" value="${k}" checked> ${d.numero} · ${d.nom}</label>`).join('');
+  $('#combineListe').onchange = maj;
+  $('#btnCombine').onclick = async () => {
+    const d = coches();
+    $('#dlgCombine').close();
+    const avant = etat.doc;
+    if (avant !== 'tous'){ etat.doc = 'tous'; await afficher(); }   // les 3 pages doivent exister pour être imprimées
+    await document.fonts.ready;
+    await imprimerPages(d, d.length === 1 ? `${prestaCourante().nom} - ${DOCS[d[0]].numero} ${DOCS[d[0]].nom}` : nomCombine(d));
+    if (avant !== 'tous'){ etat.doc = avant; afficher(); }
+  };
+  maj();
+  $('#dlgCombine').showModal();
 }
 
 async function exporterPdf(){
@@ -1814,6 +1866,7 @@ async function init(){
     construireEditeur(); afficher();
   });
   $('#btnPdf').onclick = exporterPdf;
+  $('#btnPdfPlus').onclick = ouvrirCombine;
   $('#btnSauvegarde').onclick = ouvrirSauvegarde;
   $('#btnExporter').onclick = exporterSauvegarde;
   $('#fichierSauvegarde').onchange = e => { const f = e.target.files[0]; e.target.value = ''; if (f) importerSauvegarde(f); };
@@ -1844,7 +1897,8 @@ async function init(){
   if (q.has('impression')) document.body.classList.add('sans-editeur');
   construireEditeur();
   afficher();
-  if (q.has('impression')) document.querySelectorAll('.feuille').forEach(f => f.classList.add('a-imprimer'));
+  /* &pages=plaquette,tarifs : seulement ces pages (vérification d'un PDF combiné) */
+  if (q.has('impression')) document.querySelectorAll('.feuille').forEach(f => f.classList.toggle('a-imprimer', !q.get('pages') || q.get('pages').split(',').includes(f.dataset.doc)));
 }
 init();
 /* Hors connexion (uniquement en ligne, pas en ouverture directe du fichier) */
