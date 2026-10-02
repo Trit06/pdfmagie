@@ -439,6 +439,10 @@ function nomAdministratif(nom){
 }
 
 /* Morceaux communs */
+/* Année discrète, coin bas droit, hors du cadre doré (vide = année en cours) */
+const anneeDe = p => String(p.millesime || '').trim() || String(new Date().getFullYear());
+const millesime = p => `<div${ch(cheminP(p) + '.millesime')} style="position:absolute;right:8px;bottom:6px;z-index:5;font-family:'Jost',sans-serif;font-size:7.5px;letter-spacing:.14em;line-height:1;color:${OR};opacity:.45">${esc(anneeDe(p))}</div>`;
+
 const cadreDore = () =>
   `<div style="position:absolute;left:22px;top:22px;right:22px;bottom:22px;border:1px solid ${OR}"></div>
    <div style="position:absolute;left:30px;top:30px;right:30px;bottom:30px;border:2px solid ${OR}"></div>`;
@@ -465,7 +469,7 @@ function enveloppePapier(g, p, surtitre, tailleTitre, corps, champSurtitre){
   <div style="position:absolute;left:0;bottom:0;width:100%;height:74px;overflow:hidden;background:var(--deep)">
     <img class="tex" src="${TEXTURE}" alt="" style="opacity:.55">
   </div>
-  ${cadreDore()}
+  ${cadreDore()}${millesime(p)}
   <div style="position:absolute;left:66px;right:250px;top:34px;height:148px;display:flex;align-items:center">
     <div style="display:flex;flex-direction:column;gap:2px;width:100%;min-width:0">
       <div${champSurtitre ? ch(champSurtitre) : ''} style="font-family:'Cinzel',serif;font-size:14px;letter-spacing:0.38em;color:${OR}">${esc(maj(surtitre))}</div>
@@ -545,7 +549,7 @@ function rendrePlaquette(g, p){
   <img class="tex" src="${TEXTURE}" alt="" style="opacity:.55">
   ${etoilePos(90,118,18,.9)}${etoilePos(690,96,12,.7)}${etoilePos(650,206,22,.85)}${etoilePos(120,268,10,.6)}
   ${etoilePos(560,62,9,.6)}${etoilePos(220,70,8,.5)}${etoilePos(70,700,12,.55)}${etoilePos(712,760,10,.5)}
-  ${cadreDore()}
+  ${cadreDore()}${millesime(p)}
   <div class="corps" style="position:relative;width:100%;height:100%;padding:60px 66px 52px;display:flex;flex-direction:column;align-items:center">
     <div${ch('global.nomScene')} style="font-family:'Cinzel',serif;font-size:14px;letter-spacing:0.42em;color:${OR}">${esc(maj(g.nomScene))} PRÉSENTE</div>
     <h1${ch(P + '.nom')} data-hmax="200" data-tmax="128" style="margin:6px 0 0;max-width:100%;font-family:'Abril Fatface',serif;font-weight:400;font-size:128px;line-height:1;color:${CREME};text-align:center">${esc(p.nom)}</h1>
@@ -929,7 +933,8 @@ function editeurPrestation(P){
       <button type="button" class="petit danger" data-action="supprimer-presta">Supprimer</button></div>`
     + section('Titre', `
       ${champ('Nom', P + '.nom')}
-      ${champ('Sous-titre', P + '.sousTitre', { exemple: 'Spectacle de magie familial' })}`)
+      ${champ('Sous-titre', P + '.sousTitre', { exemple: 'Spectacle de magie familial' })}
+      ${champ('Année (repère discret)', P + '.millesime', { classe: 'etroit', exemple: String(new Date().getFullYear()), aide: 'Tout petit, en bas à droite des 3 documents, hors du cadre doré. Vide : année en cours.' })}`)
     + section('Couleur d\'accent', roueHtml(), 'Les teintes foncée et pâle sont calculées depuis l’accent ; vous pouvez aussi les choisir vous-même.')
     + section('Photos', editeurPhotos(P))
     + section('Présentation', `
