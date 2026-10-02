@@ -512,15 +512,26 @@ const CADRE_OR = `border:2px solid ${OR};box-shadow:0 12px 28px rgba(0,0,0,0.4)`
 function blocGalerie(p, P, R){
   const gal = p.galerie || [], G = P + '.galerie';
   const marge = `position:relative;width:${R.largeur}%;height:var(--photoH,360px);margin-top:calc(28px*var(--esp))`;
+  /* Quatuor et Mosaïque : cadre doré du trio + légère inclinaison « au hasard » mais stable (tirée de la prestation) */
+  let graine = [...String(p.id || p.nom || '')].reduce((h, c) => (Math.imul(h, 31) + c.charCodeAt(0)) >>> 0, 2166136261);
+  const hasard = () => ((graine = (Math.imul(graine, 1103515245) + 12345) >>> 0) / 4294967296);
+  const angles = [0, 1, 2, 3, 4].map(i => ((i % 2 ? 1 : -1) * (hasard() < .25 ? -1 : 1) * (.8 + hasard() * 1.8)).toFixed(2));
+  const caseInclinee = (i, style) => `<div style="position:relative;min-width:0;overflow:hidden;border-radius:12px;${CADRE_OR};transform:rotate(${angles[i]}deg);${style}">${photoCadree(gal[i], `${G}.${i}`)}</div>`;
   if (p.modePhoto === 'quatuor'){
-    /* 4 photos sur 2 rangées de largeurs alternées ; inclinaison « au hasard » mais stable (tirée du nom de la prestation) */
-    let graine = [...String(p.id || p.nom || '')].reduce((h, c) => (Math.imul(h, 31) + c.charCodeAt(0)) >>> 0, 2166136261);
-    const hasard = () => ((graine = (Math.imul(graine, 1103515245) + 12345) >>> 0) / 4294967296);
-    const angles = [0, 1, 2, 3].map(i => ((i % 2 ? 1 : -1) * (hasard() < .25 ? -1 : 1) * (.8 + hasard() * 1.8)).toFixed(2));
-    const case_ = (i, flex) => `<div style="position:relative;flex:${flex};overflow:hidden;border-radius:12px;${CADRE_OR};transform:rotate(${angles[i]}deg)">${photoCadree(gal[i], `${G}.${i}`)}</div>`;
+    /* 4 photos sur 2 rangées de largeurs alternées */
     return `<div style="${marge};display:flex;flex-direction:column;gap:16px">
-      <div style="flex:1;display:flex;gap:16px">${case_(0, 1.3)}${case_(1, 1)}</div>
-      <div style="flex:1;display:flex;gap:16px">${case_(2, 1)}${case_(3, 1.3)}</div></div>`;
+      <div style="flex:1;display:flex;gap:16px">${caseInclinee(0, 'flex:1.3')}${caseInclinee(1, 'flex:1')}</div>
+      <div style="flex:1;display:flex;gap:16px">${caseInclinee(2, 'flex:1')}${caseInclinee(3, 'flex:1.3')}</div></div>`;
+  }
+  if (p.modePhoto === 'mosaique'){
+    /* un portrait à gauche ; à droite une photo large en haut et 2 ou 3 photos en bas */
+    const bas = gal[4]?.img ? [2, 3, 4] : [2, 3];
+    return `<div style="${marge};display:flex;gap:16px">
+      ${caseInclinee(0, 'flex:none;width:calc(var(--photoH,360px) * .7)')}
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:16px">
+        ${caseInclinee(1, 'flex:1.15')}
+        <div style="flex:1;display:flex;gap:16px">${bas.map(i => caseInclinee(i, 'flex:1')).join('')}</div>
+      </div></div>`;
   }
   if (p.modePhoto === 'trio'){
     /* une photo portrait à gauche, deux paysages empilés à droite */
@@ -979,6 +990,7 @@ const MODES_PHOTO = [
   ['unique', 'Une photo', 'Grande photo et médaillon', '<rect x="2" y="5" width="20" height="13" rx="2"/><circle cx="18" cy="17" r="3.2"/>'],
   ['trio', 'Trio', 'Un portrait et deux paysages', '<rect x="2" y="4" width="8" height="16" rx="1.5"/><rect x="12" y="4" width="10" height="7" rx="1.5"/><rect x="12" y="13" width="10" height="7" rx="1.5"/>'],
   ['quatuor', 'Quatuor', 'Quatre photos légèrement inclinées', '<rect x="2" y="3" width="11" height="8" rx="1.5" transform="rotate(-4 7 7)"/><rect x="15" y="3" width="7" height="8" rx="1.5" transform="rotate(4 18 7)"/><rect x="2" y="13" width="7" height="8" rx="1.5" transform="rotate(3 5 17)"/><rect x="11" y="13" width="11" height="8" rx="1.5" transform="rotate(-3 16 17)"/>'],
+  ['mosaique', 'Mosaïque', 'Un portrait et 3 ou 4 photos', '<rect x="2" y="3" width="7" height="18" rx="1.5" transform="rotate(-3 5 12)"/><rect x="11" y="3" width="11" height="8" rx="1.5" transform="rotate(2 16 7)"/><rect x="11" y="13" width="5" height="8" rx="1.5" transform="rotate(-3 13 17)"/><rect x="17" y="13" width="5" height="8" rx="1.5" transform="rotate(3 19 17)"/>'],
   ['polaroids', 'Polaroïds', '2 à 5 tirages en éventail', '<rect x="2" y="6" width="9" height="11" transform="rotate(-8 6 12)"/><rect x="8" y="5" width="9" height="11"/><rect x="13" y="6" width="9" height="11" transform="rotate(8 18 12)"/>']];
 
 function editeurPhotos(P){
@@ -987,7 +999,11 @@ function editeurPhotos(P){
     `<button type="button" class="mode-photo" data-action="mode-photo" data-chemin="${P}.modePhoto" data-valeur="${k}" aria-pressed="${k === mode}" title="${aide}">
       <svg width="30" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round">${svg}</svg><b>${nom}</b><small>${aide}</small></button>`).join('')}</div></div>`;
   let contenu;
-  if (mode === 'quatuor')
+  if (mode === 'mosaique')
+    contenu = `<div class="rangee">${champImage('Portrait (gauche)', G + '.0.img')}${champImage('Large (haut droite)', G + '.1.img')}</div>
+      <div class="rangee">${champImage('Bas 1', G + '.2.img')}${champImage('Bas 2', G + '.3.img')}</div>
+      <div class="rangee">${champImage('Bas 3', G + '.4.img', { facultatif: true })}<div class="champ"></div></div>`;
+  else if (mode === 'quatuor')
     contenu = `<div class="rangee">${champImage('Haut gauche', G + '.0.img')}${champImage('Haut droite', G + '.1.img')}</div>
       <div class="rangee">${champImage('Bas gauche', G + '.2.img')}${champImage('Bas droite', G + '.3.img')}</div>`;
   else if (mode === 'trio')
