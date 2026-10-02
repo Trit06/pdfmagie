@@ -582,6 +582,14 @@ function blocGalerie(p, P, R){
 const nomSceneDe = (g, p) => String(p.nomScene || '').trim() || g.nomScene;
 const plusieurs = nom => /\s(et|&)\s|,/i.test(nom);
 
+/* Logo de la vidéo aux couleurs du thème : bouton YouTube doré (triangle dans la teinte foncée), sinon un simple « lecture » */
+function logoVideo(url){
+  const youtube = /youtu\.?be/i.test(url || '');
+  return youtube
+    ? `<svg width="22" height="16" viewBox="0 0 28 20" style="display:block;flex-shrink:0" aria-label="YouTube"><rect width="28" height="20" rx="5.5" fill="${OR}"/><path d="M11.2 5.6v8.8l7.6-4.4z" fill="var(--deep)"/></svg>`
+    : `<svg width="16" height="16" viewBox="0 0 20 20" style="display:block;flex-shrink:0"><circle cx="10" cy="10" r="9" fill="none" stroke="${OR}" stroke-width="1.6"/><path d="M8 6v8l6-4z" fill="${OR}"/></svg>`;
+}
+
 function rendrePlaquette(g, p){
   const versions = p.versions || [], P = cheminP(p), R = reglagesPhoto(p);
   const blocInfo = (grow, titre, contenu, tailleTexte = 16, champ = '') =>
@@ -593,7 +601,7 @@ function rendrePlaquette(g, p){
   if (p.duree) infos.push(blocInfo(1, 'DURÉE', esc(p.duree), 16, P + '.duree'));
   if (versions.length) infos.push(blocInfo(1.6, p.titreVersions ? esc(maj(p.titreVersions)) : (NOMBRES[versions.length] ? NOMBRES[versions.length] + ' ' : '') + (versions.length > 1 ? 'VERSIONS' : 'VERSION'),
       versions.map(v => esc(v.nom) + (v.detail ? ' · ' + esc(v.detail) : '')).join('<br>'), 14, P + '.versions.0.nom'));
-  if (p.video) infos.push(blocInfo(1, 'VIDÉO', `<span style="font-weight:500">${lien(urlSite(p.video), esc(videoCourte(p.video)))}</span>`, 14, P + '.video'));
+  if (p.video) infos.push(blocInfo(1, 'VIDÉO', `<span style="font-weight:500">${lien(urlSite(p.video), `<span style="display:inline-flex;align-items:center;gap:7px">${logoVideo(p.video)}${esc(videoCourte(p.video))}</span>`)}</span>`, 14, P + '.video'));
 
   return `<div class="page" data-photoh="${R.hauteur}" data-photol="${R.largeur}" style="${styleTeintes(p)};--photoH:${R.hauteur}px;background:var(--deep);color:${CREME}">
   <img class="tex" src="${TEXTURE}" alt="" style="opacity:.55">
