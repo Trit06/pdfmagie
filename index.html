@@ -54,6 +54,12 @@ a{color:inherit}
 .segment{display:flex;align-items:center;justify-content:center;width:40px;height:32px;border:0;background:none;color:#5b4d3f;cursor:pointer}
 .segment+.segment{border-left:1px solid #e1d5c2}
 .segment[aria-pressed="true"]{background:#2A211A;color:#F6EEDD}
+.modes-photo{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.mode-photo{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 4px;border:1px solid #cdbfa9;border-radius:8px;background:#fffdf8;color:#5b4d3f;cursor:pointer;font:inherit}
+.mode-photo b{font-size:12.5px;font-weight:600}
+.mode-photo small{font-size:10.5px;color:#8a7c6c;text-align:center;line-height:1.2}
+.mode-photo[aria-pressed="true"]{background:#2A211A;color:#F6EEDD;border-color:#2A211A}
+.mode-photo[aria-pressed="true"] small{color:#d8ccb8}
 .curseur output{font-weight:400;color:#7a5a2c;margin-left:4px}
 .curseur input[type=range]{width:100%;accent-color:#A8823F}
 .reglages-photo{padding:8px 10px 2px;margin-bottom:10px;border:1px solid #e1d5c2;border-radius:8px;background:#fbf7ef}
@@ -490,6 +496,38 @@ function reglagesPhoto(p){
 const stylePhotoImg = R =>
   `position:absolute;left:${-(R.zoom - 1) * R.x}%;top:${-(R.zoom - 1) * R.y}%;width:${R.zoom * 100}%;height:${R.zoom * 100}%;object-fit:cover;object-position:${R.x}% ${R.y}%`;
 
+/* ---------- Modes « Trio » et « Polaroïds » : plusieurs photos (p.galerie = [{ img, x, y, legende }]) ---------- */
+const cadrageDe = o => ({ x: 50, y: 50, zoom: 1, ...(o || {}) });
+function photoCadree(item, chemin, alt = ''){
+  const R = cadrageDe(item);
+  return `<div class="photo-cadre"${ch(chemin + '.img')} data-cadrage="${chemin}" style="position:absolute;inset:0;overflow:hidden">
+    <img class="photo-img" src="${img(item?.img)}" alt="${esc(alt)}" draggable="false" style="${stylePhotoImg({ ...R, x: +R.x, y: +R.y, zoom: 1 })}"></div>`;
+}
+const CADRE_OR = `border:2px solid ${OR};box-shadow:0 12px 28px rgba(0,0,0,0.4)`;
+
+function blocGalerie(p, P, R){
+  const gal = p.galerie || [], G = P + '.galerie';
+  const marge = `position:relative;width:${R.largeur}%;height:var(--photoH,360px);margin-top:calc(28px*var(--esp))`;
+  if (p.modePhoto === 'trio'){
+    /* une photo portrait à gauche, deux paysages empilés à droite */
+    const case_ = (i, style) => `<div style="position:relative;overflow:hidden;border-radius:12px;${CADRE_OR};${style}">${photoCadree(gal[i], `${G}.${i}`)}</div>`;
+    return `<div style="${marge};display:grid;grid-template-columns:calc(var(--photoH,360px) * .72) 1fr;grid-template-rows:1fr 1fr;gap:12px">
+      ${case_(0, 'grid-row:1 / span 2')}${case_(1, '')}${case_(2, '')}</div>`;
+  }
+  /* « Polaroïds » : 2 à 5 tirages posés en éventail, légende sur la bande blanche.
+     Taille des tirages selon leur nombre : chevauchement limité (légendes lisibles). */
+  const liste_ = gal.slice(0, 5), n = Math.max(1, liste_.length), Wc = 662 * R.largeur / 100;
+  const ROT = [-6, 4, -3, 6, -5], HAUT = n > 3 ? [.6, .05, .75, .1, .55] : [.35, .05, .45], Z = [1, 3, 2, 4, 1];
+  const lt = `min(calc(var(--photoH,360px) * .68), ${(Wc / (1 + (n - 1) * .8)).toFixed(1)}px)`;
+  return `<div style="${marge};--lt:${lt}">${liste_.map((it, i) => `
+    <div style="position:absolute;width:var(--lt);aspect-ratio:.86;box-sizing:border-box;padding:calc(var(--lt) * .045) calc(var(--lt) * .045) 0;background:#FBF8F1;
+      left:calc((${Wc.toFixed(1)}px - var(--lt)) * ${n > 1 ? (i / (n - 1)).toFixed(3) : .5});top:calc((var(--photoH,360px) - var(--lt) / .86) * ${HAUT[i] ?? .3});
+      transform:rotate(${ROT[i]}deg);box-shadow:0 10px 26px rgba(0,0,0,.45);z-index:${Z[i]};display:flex;flex-direction:column">
+      <div style="position:relative;flex:1;overflow:hidden;background:#222">${photoCadree(it, `${G}.${i}`)}</div>
+      <div${ch(`${G}.${i}.legende`)} style="height:calc(var(--lt) * .19);display:flex;align-items:center;justify-content:center;font-family:'Cinzel',serif;font-size:calc(var(--lt) * .055);letter-spacing:.06em;color:#4a3f35;text-align:center;line-height:1.1;padding:0 4%">${esc(it.legende || '')}</div>
+    </div>`).join('')}</div>`;
+}
+
 function rendrePlaquette(g, p){
   const versions = p.versions || [], P = cheminP(p), R = reglagesPhoto(p);
   const blocInfo = (grow, titre, contenu, tailleTexte = 16, champ = '') =>
@@ -512,8 +550,8 @@ function rendrePlaquette(g, p){
     <div${ch('global.nomScene')} style="font-family:'Cinzel',serif;font-size:14px;letter-spacing:0.42em;color:${OR}">${esc(maj(g.nomScene))} PRÉSENTE</div>
     <h1${ch(P + '.nom')} data-hmax="200" data-tmax="128" style="margin:6px 0 0;max-width:100%;font-family:'Abril Fatface',serif;font-weight:400;font-size:128px;line-height:1;color:${CREME};text-align:center">${esc(p.nom)}</h1>
     <div style="display:flex;align-items:center;gap:14px;margin-top:6px">${etoile(10)}<span${ch(P + '.sousTitre')} style="font-family:'Cinzel',serif;font-size:17px;letter-spacing:0.22em;color:${OR}">${esc(maj(p.sousTitre))}</span>${etoile(10)}</div>
-    <div style="position:relative;width:${R.largeur}%;margin-top:calc(28px*var(--esp))">
-      <div class="photo-cadre"${ch(P + '.photoPrincipale')} data-cadrage="${P}" style="position:relative;height:var(--photoH,360px);overflow:hidden;border-radius:16px;border:2px solid ${OR};box-shadow:0 18px 40px rgba(0,0,0,0.4)">
+    ${(p.modePhoto || 'unique') !== 'unique' ? blocGalerie(p, P, R) : `<div style="position:relative;width:${R.largeur}%;margin-top:calc(28px*var(--esp))">
+      <div class="photo-cadre"${ch(P + '.photoPrincipale')} data-cadrage="${P}.photoReglages" style="position:relative;height:var(--photoH,360px);overflow:hidden;border-radius:16px;border:2px solid ${OR};box-shadow:0 18px 40px rgba(0,0,0,0.4)">
         <img class="photo-img" src="${img(p.photoPrincipale)}" alt="${esc(g.nomScene)} — ${esc(p.nom)}" draggable="false" style="${stylePhotoImg(R)}">
       </div>
       ${p.photoMedaillon ? `
@@ -521,7 +559,7 @@ function rendrePlaquette(g, p){
         <img src="${img(p.photoMedaillon)}" alt="${esc(p.legendeMedaillon)}" style="width:var(--medT,148px);height:var(--medT,148px);border-radius:50%;object-fit:cover;border:4px solid var(--deep)">
       </div>
       ${p.legendeMedaillon ? `<div${ch(P + '.legendeMedaillon')} style="position:absolute;right:var(--legR,110px);bottom:-30px;white-space:nowrap;font-family:'Cinzel',serif;font-size:12px;letter-spacing:0.2em;color:${OR}">${esc(maj(p.legendeMedaillon))}</div>` : ''}` : ''}
-    </div>
+    </div>`}
     <div style="display:flex;gap:40px;margin-top:calc(48px*var(--esp))">
       ${(g.distinctions || []).map((d, i) => `<img${ch(`global.distinctions.${i}.texte`)} src="${img(d.imageOr)}" alt="${esc(d.texte)}" style="height:54px">`).join('')}
     </div>
@@ -893,10 +931,7 @@ function editeurPrestation(P){
       ${champ('Nom', P + '.nom')}
       ${champ('Sous-titre', P + '.sousTitre', { exemple: 'Spectacle de magie familial' })}`)
     + section('Couleur d\'accent', roueHtml(), 'Les teintes foncée et pâle sont calculées depuis l’accent ; vous pouvez aussi les choisir vous-même.')
-    + section('Photos', `
-      <div class="rangee">${champImage('Photo principale', P + '.photoPrincipale')}${champImage('Médaillon', P + '.photoMedaillon', { facultatif: true })}</div>
-      ${reglagesPhotoHtml(P)}
-      ${champ('Légende du médaillon', P + '.legendeMedaillon', { facultatif: true })}`)
+    + section('Photos', editeurPhotos(P))
     + section('Présentation', `
       ${champ('Texte de présentation', P + '.presentation', { long: 5 })}
       ${choixAlignement(P + '.alignPresentation')}
@@ -920,13 +955,37 @@ function champCurseur(label, chemin, min, max, pas, defaut, unite){
   return `<label class="champ curseur"><span>${label} <output>${v}${unite}</output></span>
     <input type="range" min="${min}" max="${max}" step="${pas}" value="${v}" data-chemin="${chemin}" data-unite="${unite}"></label>`;
 }
-function reglagesPhotoHtml(P){
+const MODES_PHOTO = [
+  ['unique', 'Une photo', 'Grande photo et médaillon', '<rect x="2" y="5" width="20" height="13" rx="2"/><circle cx="18" cy="17" r="3.2"/>'],
+  ['trio', 'Trio', 'Un portrait et deux paysages', '<rect x="2" y="4" width="8" height="16" rx="1.5"/><rect x="12" y="4" width="10" height="7" rx="1.5"/><rect x="12" y="13" width="10" height="7" rx="1.5"/>'],
+  ['polaroids', 'Polaroïds', '2 à 5 tirages en éventail', '<rect x="2" y="6" width="9" height="11" transform="rotate(-8 6 12)"/><rect x="8" y="5" width="9" height="11"/><rect x="13" y="6" width="9" height="11" transform="rotate(8 18 12)"/>']];
+
+function editeurPhotos(P){
+  const mode = lire(P + '.modePhoto') || 'unique', G = P + '.galerie';
+  const choix = `<div class="champ"><span>Disposition des photos</span><div class="modes-photo">${MODES_PHOTO.map(([k, nom, aide, svg]) =>
+    `<button type="button" class="mode-photo" data-action="mode-photo" data-chemin="${P}.modePhoto" data-valeur="${k}" aria-pressed="${k === mode}" title="${aide}">
+      <svg width="30" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round">${svg}</svg><b>${nom}</b><small>${aide}</small></button>`).join('')}</div></div>`;
+  let contenu;
+  if (mode === 'trio')
+    contenu = `<div class="rangee">${champImage('Portrait (gauche)', G + '.0.img')}${champImage('Paysage (haut)', G + '.1.img')}</div>
+      <div class="rangee">${champImage('Paysage (bas)', G + '.2.img')}<div class="champ"></div></div>`;
+  else if (mode === 'polaroids')
+    contenu = liste('Tirages', G, c => `<div class="rangee">${champImage('Photo', c + '.img', { polaroid: true })}${champ('Légende', c + '.legende', { facultatif: true, exemple: 'Bulles géantes' })}</div>`,
+      { img: null, legende: '' }, { nom: it => it.legende || 'Photo', ajouter: 'Ajouter un tirage' });
+  else
+    contenu = `<div class="rangee">${champImage('Photo principale', P + '.photoPrincipale')}${champImage('Médaillon', P + '.photoMedaillon', { facultatif: true })}</div>
+      ${champ('Légende du médaillon', P + '.legendeMedaillon', { facultatif: true })}`;
+  const avert = mode === 'polaroids' && (lire(G) || []).length > 5 ? '<p class="aide">⚠ Seuls les 5 premiers tirages sont affichés.</p>' : '';
+  return choix + contenu + avert + reglagesPhotoHtml(P, mode);
+}
+
+function reglagesPhotoHtml(P, mode = 'unique'){
   const R = P + '.photoReglages';
   return `<div class="reglages-photo">
     <div class="rangee">${champCurseur('Largeur', R + '.largeur', 30, 100, 1, 100, ' %')}${champCurseur('Hauteur', R + '.hauteur', 160, 560, 5, 360, ' px')}</div>
-    <div class="rangee">${champCurseur('Zoom', R + '.zoom', 1, 3, .05, 1, '×')}
-      <div class="champ"><span>&nbsp;</span><button type="button" class="petit" data-action="photo-reinit" data-chemin="${R}">Réinitialiser la photo</button></div></div>
-    <p class="aide">Pour cadrer : faites glisser la photo dans l’aperçu de la plaquette. Une photo en portrait : réduisez la largeur et augmentez la hauteur.</p>
+    <div class="rangee">${mode === 'unique' ? champCurseur('Zoom', R + '.zoom', 1, 3, .05, 1, '×') : '<div class="champ"></div>'}
+      <div class="champ"><span>&nbsp;</span><button type="button" class="petit" data-action="photo-reinit" data-chemin="${R}">Réinitialiser les réglages</button></div></div>
+    <p class="aide">Pour cadrer : faites glisser ${mode === 'unique' ? 'la photo' : 'chaque photo'} dans l’aperçu de la plaquette.${mode === 'unique' ? ' Une photo en portrait : réduisez la largeur et augmentez la hauteur.' : ''}</p>
   </div>`;
 }
 
@@ -1040,6 +1099,14 @@ function surClic(e){
     case 'photo-reinit': ecrire(chemin, null); break;
     case 'teinte-auto': ecrire(chemin, null); break;
     case 'aligner': ecrire(chemin, b.dataset.valeur); break;
+    case 'mode-photo': {
+      /* premier passage en mode multi-photos : on part des photos déjà choisies */
+      const G = chemin.replace(/modePhoto$/, 'galerie'), pr = lire(chemin.replace(/\.modePhoto$/, ''));
+      if (b.dataset.valeur !== 'unique' && !(lire(G) || []).length)
+        ecrire(G, [pr.photoPrincipale, pr.photoMedaillon].filter(Boolean).map(img => ({ img, legende: '' })));
+      ecrire(chemin, b.dataset.valeur);
+      break;
+    }
     case 'catalogue-ouvrir': ouvrirCatalogue(chemin || null); return;
     case 'catalogue-garder': garderDansCatalogue(lire(chemin)); break;
     default: return;
@@ -1250,8 +1317,8 @@ function ouvrirBibliotheque(chemin){
 /* Compression selon l'usage : c'est ce qui fait le poids des PDF (Chrome y met les images telles quelles).
    Photo principale : 1 800 px (net en A4, même imprimé) · autres (médaillon, polaroïds, lauriers) : 900 px.
    JPEG qualité 82 % ; PNG gardé seulement s'il a de la transparence. */
-const TAILLES_IMAGE = { grande: 1800, petite: 900 };
-const usageDe = chemin => /\.photoPrincipale$/.test(chemin || '') ? 'grande' : 'petite';
+const TAILLES_IMAGE = { grande: 1800, moyenne: 1300, petite: 900 };
+const usageDe = chemin => /\.photoPrincipale$/.test(chemin || '') ? 'grande' : /\.galerie\.\d+\.img$/.test(chemin || '') ? 'moyenne' : 'petite';
 
 async function preparerImage(fichier, usage = 'grande'){
   const MAX = TAILLES_IMAGE[usage] || TAILLES_IMAGE.grande;
@@ -1275,11 +1342,12 @@ async function preparerImage(fichier, usage = 'grande'){
 async function optimiserImages(){
   const b = $('#btnOptimiser'); b.disabled = true; b.textContent = 'Optimisation…';
   const grandes = new Set(DONNEES.prestations.map(p => p.photoPrincipale).filter(Boolean));
+  const moyennes = new Set(DONNEES.prestations.flatMap(p => (p.galerie || []).map(it => it.img)).filter(Boolean));
   let avant = 0, apres = 0, n = 0;
   try {
     for (const [id, v] of IMAGES){
       avant += v.blob.size;
-      const nouveau = await preparerImage(v.blob, grandes.has('img:' + id) ? 'grande' : 'petite');
+      const nouveau = await preparerImage(v.blob, grandes.has('img:' + id) ? 'grande' : moyennes.has('img:' + id) ? 'moyenne' : 'petite');
       if (nouveau.size < v.blob.size * .9){
         URL.revokeObjectURL(v.url);
         Object.assign(v, { blob: nouveau, url: URL.createObjectURL(nouveau) });
@@ -1613,7 +1681,10 @@ function initApercuInteractif(){
     const cadre = e.target.closest('[data-cadrage]');
     if (!cadre || e.button) return;
     const image = cadre.querySelector('.photo-img'), rect = cadre.getBoundingClientRect();
-    glisse = { x0: e.clientX, y0: e.clientY, P: cadre.dataset.cadrage, R: reglagesPhoto(lire(cadre.dataset.cadrage)), image, l: rect.width, h: rect.height, bouge: false, cadre, id: e.pointerId };
+    const chemin = cadre.dataset.cadrage, principale = chemin.endsWith('.photoReglages');
+    const R = principale ? reglagesPhoto(lire(chemin.replace(/\.photoReglages$/, ''))) : { ...cadrageDe(lire(chemin)), zoom: 1 };
+    R.x = +R.x; R.y = +R.y;
+    glisse = { x0: e.clientX, y0: e.clientY, chemin, R, image, l: rect.width, h: rect.height, bouge: false, cadre, id: e.pointerId };
   });
   scene.addEventListener('pointermove', e => {
     if (!glisse) return;
@@ -1635,7 +1706,7 @@ function initApercuInteractif(){
     g.cadre.classList.remove('glisse');
     if (!g.bouge || !g.R2) return;
     finGlisse = Date.now();
-    ecrire(g.P + '.photoReglages', { ...(lire(g.P + '.photoReglages') || {}), x: Math.round(g.R2.x), y: Math.round(g.R2.y) });
+    ecrire(g.chemin, { ...(lire(g.chemin) || {}), x: Math.round(g.R2.x), y: Math.round(g.R2.y) });
     afficher();
   };
   scene.addEventListener('pointerup', fin);
