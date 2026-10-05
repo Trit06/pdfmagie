@@ -1390,11 +1390,22 @@ function surChangement(e){
   }
   if (action === 'synchro'){
     const it = lire(chemin), P = chemin.split('.fiche.')[0];
+    const vPlaquette = String(lire(`${P}.${it.cle}`) ?? '').trim(), vFiche = String(it.valeur ?? '').trim();
     if (coche){
-      /* la valeur de la plaquette fait foi ; si elle est vide, on reprend celle de la fiche */
-      if (!String(lire(`${P}.${it.cle}`) || '').trim()) ecrire(`${P}.${it.cle}`, it.valeur);
+      /* jamais de valeur vide si l'autre côté en a une ; si les deux diffèrent, on demande laquelle garder */
+      if (!vPlaquette && vFiche) ecrire(`${P}.${it.cle}`, vFiche);
+      else if (vPlaquette && vFiche && vPlaquette !== vFiche){
+        const garderPlaquette = confirm(`La ${CLES_SYNCHRO[it.cle]} diffère :
+
+• Plaquette : « ${vPlaquette} »
+• Fiche technique : « ${vFiche} »
+
+OK : garder celle de la plaquette
+Annuler : garder celle de la fiche technique`);
+        if (!garderPlaquette) ecrire(`${P}.${it.cle}`, vFiche);
+      }
       ecrire(chemin, { ...it, synchro: true });
-    } else ecrire(chemin, { ...it, valeur: lire(`${P}.${it.cle}`) ?? it.valeur, synchro: false });
+    } else ecrire(chemin, { ...it, valeur: vPlaquette || vFiche, synchro: false });
     construireEditeur(); afficher(); return;
   }
   if (action !== 'disposition') return;
