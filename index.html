@@ -1197,6 +1197,14 @@ function choixAlignement(chemin){
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">${svg}</svg></button>`).join('')}</div></div>`;
 }
 
+/* Déplacer un besoin vers une autre catégorie (si la fiche en a plusieurs) */
+function choixCategorie(F, c){
+  const sections = lire(F + '.sections') || [], ici = +c.match(/\.sections\.(\d+)\./)[1];
+  if (sections.length < 2) return '';
+  return `<label class="champ"><span>Déplacer vers</span><select data-action="deplacer-besoin" data-chemin="${c}">
+    ${sections.map((sec, k) => `<option value="${k}"${k === ici ? ' selected' : ''}>${escBrut(sec.titre || 'Besoins techniques')}${k === ici ? ' (actuelle)' : ''}</option>`).join('')}</select></label>`;
+}
+
 function champCurseur(label, chemin, min, max, pas, defaut, unite){
   const v = Number(lire(chemin) ?? defaut);
   return `<label class="champ curseur"><span>${label} <output>${v}${unite}</output></span>
@@ -1262,7 +1270,8 @@ function editeurFiche(P){
       ${champ('Titre de la catégorie', cs + '.titre', { exemple: 'Besoins techniques' })}
       ${liste('Besoins', cs + '.besoins', c => `
         <div class="rangee">${champPicto(c + '.picto')}${champ('Titre', c + '.titre')}</div>
-        ${champ('Détail', c + '.detail', { facultatif: true, long: 2, aide: 'Entrée pour aller à la ligne.' })}`,
+        ${champ('Détail', c + '.detail', { facultatif: true, long: 2, aide: 'Entrée pour aller à la ligne.' })}
+        ${choixCategorie(F, c)}`,
         { picto: 'people', titre: '', detail: '' }, { nom: b => b.titre, ajouter: 'Ajouter un besoin' })}`,
       { titre: 'Animations supplémentaires', besoins: [] }, { nom: sec => sec.titre || 'Besoins techniques', ajouter: 'Ajouter une catégorie' }),
       'Chaque catégorie a son titre (avec le trait) et ses besoins, sur deux colonnes : un nombre pair rend mieux. Une catégorie sans besoin n’apparaît pas.')
@@ -1387,6 +1396,14 @@ function surClic(e){
 
 function surChangement(e){
   const action = e.target.dataset.action, chemin = e.target.dataset.chemin, coche = e.target.checked;
+  if (action === 'deplacer-besoin'){
+    const [, F, k, i] = chemin.match(/^(.*\.sections)\.(\d+)\.besoins\.(\d+)$/), cible = +e.target.value;
+    if (cible === +k) return;
+    const sections = lire(F), [besoin] = sections[k].besoins.splice(+i, 1);
+    (sections[cible].besoins ??= []).push(besoin);
+    aSauver(); construireEditeur(); afficher(); notifier(`« ${besoin.titre || 'Besoin'} » déplacé dans « ${sections[cible].titre || 'Besoins techniques'} ».`);
+    return;
+  }
   if (action === 'escalier'){ ecrire(chemin, coche); construireEditeur(); afficher(); return; }
   if (action === 'jauge-plaquette'){ ecrire(chemin, coche); construireEditeur(); afficher(); return; }
   if (action === 'intitule-commun'){
