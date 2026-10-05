@@ -73,6 +73,7 @@ a{color:inherit}
 .barre-format button{width:30px;height:26px;border:1px solid #cdbfa9;border-radius:5px;background:#fffdf8;color:#2A211A;cursor:pointer;font:inherit;font-size:14px}
 .barre-format button:hover{border-color:#A8823F;background:#fff}
 .barre-format span{font-size:11.5px;color:#9a8b7a;margin-left:4px}
+.sous-bloc{margin-top:12px;padding-top:4px;border-top:1px dashed #d6c8b2}
 .curseur output{font-weight:400;color:#7a5a2c;margin-left:4px}
 .curseur input[type=range]{width:100%;accent-color:#A8823F}
 .reglages-photo{padding:8px 10px 2px;margin-bottom:10px;border:1px solid #e1d5c2;border-radius:8px;background:#fbf7ef}
@@ -497,10 +498,12 @@ const contactLigne = g => `<span data-champ="global.nom">${esc(g.nom)} « ${esc(
 const ch = chemin => ` data-champ="${chemin}"`;
 const cheminP = p => 'prestations.' + DONNEES.prestations.indexOf(p);
 
-function medaillon(src, alt, taille, extraStyle, posImage = 'center', champ = ''){
-  return `<div${champ ? ch(champ) : ''} style="position:absolute;${extraStyle};padding:4px;border-radius:50%;background:${OR};box-shadow:var(--ombre-med)">
-    <img src="${img(src)}" alt="${esc(alt)}" style="width:${taille}px;height:${taille}px;border-radius:50%;object-fit:cover;object-position:${posImage};border:4px solid var(--deep)"></div>`;
+function medaillon(src, alt, taille, extraStyle, posImage = 'center', champ = '', cadrage = ''){
+  return `<div${champ ? ch(champ) : ''}${cadrage ? ` class="photo-cadre" data-cadrage="${cadrage}"` : ''} style="position:absolute;${extraStyle};padding:4px;border-radius:50%;background:${OR};box-shadow:var(--ombre-med)">
+    <img${cadrage ? ' class="photo-img" data-mode="position" draggable="false"' : ''} src="${img(src)}" alt="${esc(alt)}" style="width:${taille}px;height:${taille}px;border-radius:50%;object-fit:cover;object-position:${posImage};border:4px solid var(--deep)"></div>`;
 }
+/* Médaillon d'en-tête (fiche technique et tarifs) : photo propre, sinon la photo principale */
+const cadrageEntete = p => ({ ...(p.photoEntete ? { x: 50, y: 50 } : { x: 52, y: 22 }), ...(p.enteteCadrage || {}) });
 
 /* Bandeau de tête + bas de page des documents « papier » */
 function enveloppePapier(g, p, surtitre, tailleTitre, corps, champSurtitre){
@@ -522,7 +525,7 @@ function enveloppePapier(g, p, surtitre, tailleTitre, corps, champSurtitre){
       <div style="display:flex;align-items:center;gap:12px;margin-top:4px">${etoile(9)}<span${ch(P + '.sousTitre')} style="font-family:'Cinzel',serif;font-size:15px;letter-spacing:0.22em;color:${OR}">${esc(maj(p.sousTitre))}</span></div>
     </div>
   </div>
-  ${medaillon(p.photoPrincipale, `${g.nomScene} dans le spectacle ${p.nom}`, 150, 'right:62px;top:64px', '52% 22%', P + '.photoPrincipale')}
+  ${medaillon(p.photoEntete || p.photoPrincipale, `${g.nomScene} dans le spectacle ${p.nom}`, 150, 'right:62px;top:64px', `${cadrageEntete(p).x}% ${cadrageEntete(p).y}%`, P + '.photoEntete', P + '.enteteCadrage')}
   <div class="corps" style="position:relative;width:100%;height:100%;padding:196px 66px 86px;display:flex;flex-direction:column">
     ${corps}
   </div>
@@ -1218,7 +1221,11 @@ function editeurPhotos(P){
     contenu = `<div class="rangee">${champImage('Photo principale', P + '.photoPrincipale')}${champImage('Médaillon', P + '.photoMedaillon', { facultatif: true })}</div>
       ${champ('Légende du médaillon', P + '.legendeMedaillon', { facultatif: true })}`;
   const avert = mode === 'polaroids' && (lire(G) || []).length > 5 ? '<p class="aide">⚠ Seuls les 5 premiers tirages sont affichés.</p>' : '';
-  return choix + contenu + avert + reglagesPhotoHtml(P, mode);
+  const entete = `<div class="sous-bloc"><div class="liste-titre">Fiche technique et tarifs</div>
+    <div class="rangee">${champImage('Médaillon de l’en-tête', P + '.photoEntete', { facultatif: true })}
+      <div class="champ"><span>&nbsp;</span><small>Vide : la photo principale de la plaquette. Pour cadrer, faites glisser la photo dans le médaillon de l’aperçu.</small>
+        <button type="button" class="petit" data-action="photo-reinit" data-chemin="${P}.enteteCadrage" style="margin-top:6px;align-self:flex-start">Recentrer</button></div></div></div>`;
+  return choix + contenu + avert + reglagesPhotoHtml(P, mode) + entete;
 }
 
 function reglagesPhotoHtml(P, mode = 'unique'){
@@ -1956,7 +1963,9 @@ function initApercuInteractif(){
     if (!cadre || e.button) return;
     const image = cadre.querySelector('.photo-img'), rect = cadre.getBoundingClientRect();
     const chemin = cadre.dataset.cadrage, principale = chemin.endsWith('.photoReglages');
-    const R = principale ? reglagesPhoto(lire(chemin.replace(/\.photoReglages$/, ''))) : { ...cadrageDe(lire(chemin)), zoom: 1 };
+    const R = principale ? reglagesPhoto(lire(chemin.replace(/\.photoReglages$/, '')))
+      : chemin.endsWith('.enteteCadrage') ? { ...cadrageEntete(lire(chemin.replace(/\.enteteCadrage$/, ''))), zoom: 1 }
+      : { ...cadrageDe(lire(chemin)), zoom: 1 };
     R.x = +R.x; R.y = +R.y;
     glisse = { x0: e.clientX, y0: e.clientY, chemin, R, image, l: rect.width, h: rect.height, bouge: false, cadre, id: e.pointerId };
   });
@@ -1972,7 +1981,8 @@ function initApercuInteractif(){
     e.preventDefault();
     const R = glisse.R, v = 140 / R.zoom;
     glisse.R2 = { ...R, x: borne(R.x - dx / glisse.l * v), y: borne(R.y - dy / glisse.h * v) };
-    glisse.image.style.cssText = stylePhotoImg(glisse.R2);
+    if (glisse.image.dataset.mode === 'position') glisse.image.style.objectPosition = `${glisse.R2.x}% ${glisse.R2.y}%`;
+    else glisse.image.style.cssText = stylePhotoImg(glisse.R2);
   });
   const fin = () => {
     if (!glisse) return;
