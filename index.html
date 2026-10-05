@@ -754,7 +754,7 @@ function rendreFiche(g, p){
   const besoins = (f.besoins || []).map((b, i) =>
     `<div${ch(`${F}.besoins.${i}.titre`)} style="display:flex;gap:14px;align-items:flex-start;padding:calc(16px*var(--esp)) 0;border-bottom:1px dotted ${OR_PAPIER}">${picto(b.picto)}
       <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:15px;font-weight:600">${esc(b.titre)}</span>
-      ${b.detail ? `<span style="font-size:13.5px;line-height:1.4;color:${ENCRE2}">${esc(b.detail)}</span>` : ''}</div></div>`
+      ${b.detail ? `<span style="font-size:13.5px;line-height:1.4;color:${ENCRE2};white-space:pre-line">${esc(b.detail)}</span>` : ''}</div></div>`
   ).join('');
 
   const d = f.disposition?.afficher === false ? null : f.disposition, notes = d?.notes || [];
@@ -1252,7 +1252,7 @@ function editeurFiche(P){
     }, { cle: '', label: '', valeur: '', propre: true }, { nom: x => intituleDe(x), ajouter: 'Ajouter une case' }), 'Durée, temps d’installation et de rangement, jauge… 4 cases conseillées.')
     + section('Besoins techniques', liste('Besoins', F + '.besoins', c => `
       <div class="rangee">${champPicto(c + '.picto')}${champ('Titre', c + '.titre')}</div>
-      ${champ('Détail', c + '.detail', { facultatif: true })}`,
+      ${champ('Détail', c + '.detail', { facultatif: true, long: 2, aide: 'Entrée pour aller à la ligne.' })}`,
       { picto: 'people', titre: '', detail: '' }, { nom: b => b.titre, ajouter: 'Ajouter un besoin' }), 'Affichés sur deux colonnes : un nombre pair rend mieux.')
     + section('Disposition idéale', `
       <label class="case"><input type="checkbox" data-action="disposition" ${dVisible ? 'checked' : ''}> Afficher le schéma de disposition</label>
