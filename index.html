@@ -209,6 +209,9 @@ button.petit.danger{color:#9b2335;border-color:#d9a8a8}
 .page .tex{position:absolute;left:0;top:0;width:100%;height:100%;object-fit:cover;mix-blend-mode:multiply}
 .page{--esp:1}
 .page .corps>*{flex-shrink:0}
+/* la zone du corps recouvre l'en-tête (médaillon, titre, année) : elle laisse passer les clics, son contenu non */
+.page .corps{pointer-events:none}
+.page .corps>*{pointer-events:auto}
 .page .pointilles{flex:1 1 0;min-width:20px;height:3px;transform:translateY(-3px);overflow:hidden}
 .page .pointilles svg{display:block}
 .page .etoile{position:absolute}
