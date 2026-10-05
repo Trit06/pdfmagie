@@ -630,8 +630,15 @@ function migrerDonnees(d){
       p.fiche.sections = [{ titre: 'Besoins techniques', besoins: p.fiche.besoins || [] }];
       delete p.fiche.besoins;
     }
+    /* réparation : cases et besoins abîmés par l'ancien bug (remplacés par « on », « 1 »…) redeviennent des fiches vides propres */
+    const abime = o => !o || typeof o !== 'object' || Array.isArray(o) || Object.keys(o).some(k => /^\d+$/.test(k));
+    const reparer = (o, vide) => abime(o) ? { ...vide } : o;
+    if (p.fiche){
+      p.fiche.chiffres = (p.fiche.chiffres || []).map(c => reparer(c, { cle: '', label: '', valeur: '', propre: true }));
+      for (const sec of p.fiche.sections || []) sec.besoins = (sec.besoins || []).map(b => reparer(b, { picto: 'people', titre: '', detail: '' }));
+    }
     for (const c of p.fiche?.chiffres || []){
-      if (c.cle) continue;
+      if (c.cle !== undefined) continue;   // déjà mise à niveau (ou case ajoutée / réparée, propre au spectacle)
       c.cle = cleIntitule(c.label);
       if (!(c.cle in d.global.intitules)) d.global.intitules[c.cle] = c.label;
       c.propre = c.label !== d.global.intitules[c.cle];
@@ -1392,7 +1399,9 @@ function remplirPrestations(){
    ===================================================================== */
 function surSaisie(e){
   const el = e.target, chemin = el.dataset.chemin;
-  if (!chemin) return;
+  /* menus et cases à cocher « à action » (déplacer, synchroniser…) sont traités au changement, pas ici :
+     sinon leur valeur (« 1 », « on ») écrasait l'élément entier juste avant l'action */
+  if (!chemin || el.dataset.action) return;
   if (el.type === 'color'){
     ecrire(chemin, el.value);
     el.closest('.teinte').style.background = el.value;
