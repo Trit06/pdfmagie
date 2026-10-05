@@ -188,6 +188,18 @@ button.petit.danger{color:#9b2335;border-color:#d9a8a8}
 @page{size:A4;margin:0}
 .page{position:relative;width:794px;height:1123px;overflow:hidden;font-family:'Jost',sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .page img{display:block}
+/* Ombres : floues à l'écran ; dans le PDF, en couches nettes superposées.
+   (Chrome exporte les ombres floues en « masques de luminosité », mal affichés par l'aperçu d'iOS : rectangles sombres.) */
+.page{--ombre-photo:0 18px 40px rgba(0,0,0,.4);--ombre-cadre:0 12px 28px rgba(0,0,0,.4);--ombre-med:0 10px 24px rgba(0,0,0,.38);
+  --ombre-tirage:0 10px 26px rgba(0,0,0,.45);--ombre-vignette:0 3px 8px rgba(0,0,0,.25)}
+@media print{
+  .page{
+    --ombre-photo:0 6px 0 0 rgba(0,0,0,.10),0 10px 0 3px rgba(0,0,0,.08),0 14px 0 7px rgba(0,0,0,.06),0 18px 0 12px rgba(0,0,0,.045),0 22px 0 18px rgba(0,0,0,.03);
+    --ombre-cadre:0 4px 0 0 rgba(0,0,0,.10),0 7px 0 2px rgba(0,0,0,.08),0 10px 0 5px rgba(0,0,0,.06),0 13px 0 9px rgba(0,0,0,.04),0 16px 0 13px rgba(0,0,0,.03);
+    --ombre-med:0 3px 0 0 rgba(0,0,0,.10),0 6px 0 2px rgba(0,0,0,.08),0 9px 0 5px rgba(0,0,0,.06),0 12px 0 9px rgba(0,0,0,.04);
+    --ombre-tirage:0 3px 0 0 rgba(0,0,0,.12),0 6px 0 2px rgba(0,0,0,.09),0 9px 0 5px rgba(0,0,0,.06),0 12px 0 9px rgba(0,0,0,.04);
+    --ombre-vignette:0 1px 0 0 rgba(0,0,0,.14),0 2px 0 1px rgba(0,0,0,.08),0 3px 0 3px rgba(0,0,0,.05)}
+}
 .page a{color:inherit;text-decoration:none}
 .page .tex{position:absolute;left:0;top:0;width:100%;height:100%;object-fit:cover;mix-blend-mode:multiply}
 .page{--esp:1}
@@ -481,7 +493,7 @@ const ch = chemin => ` data-champ="${chemin}"`;
 const cheminP = p => 'prestations.' + DONNEES.prestations.indexOf(p);
 
 function medaillon(src, alt, taille, extraStyle, posImage = 'center', champ = ''){
-  return `<div${champ ? ch(champ) : ''} style="position:absolute;${extraStyle};padding:4px;border-radius:50%;background:${OR};box-shadow:0 10px 24px rgba(0,0,0,0.35)">
+  return `<div${champ ? ch(champ) : ''} style="position:absolute;${extraStyle};padding:4px;border-radius:50%;background:${OR};box-shadow:var(--ombre-med)">
     <img src="${img(src)}" alt="${esc(alt)}" style="width:${taille}px;height:${taille}px;border-radius:50%;object-fit:cover;object-position:${posImage};border:4px solid var(--deep)"></div>`;
 }
 
@@ -568,7 +580,7 @@ function photoCadree(item, chemin, alt = ''){
   return `<div class="photo-cadre"${ch(chemin + '.img')} data-cadrage="${chemin}" style="position:absolute;inset:0;overflow:hidden">
     <img class="photo-img" src="${img(item?.img)}" alt="${esc(alt)}" draggable="false" style="${stylePhotoImg({ ...R, x: +R.x, y: +R.y, zoom: 1 })}"></div>`;
 }
-const CADRE_OR = `border:2px solid ${OR};box-shadow:0 12px 28px rgba(0,0,0,0.4)`;
+const CADRE_OR = `border:2px solid ${OR};box-shadow:var(--ombre-cadre)`;
 
 function blocGalerie(p, P, R){
   const gal = p.galerie || [], G = P + '.galerie';
@@ -608,7 +620,7 @@ function blocGalerie(p, P, R){
   return `<div style="${marge};--lt:${lt}">${liste_.map((it, i) => `
     <div style="position:absolute;width:var(--lt);aspect-ratio:.86;box-sizing:border-box;padding:calc(var(--lt) * .045) calc(var(--lt) * .045) 0;background:#FBF8F1;
       left:calc((${Wc.toFixed(1)}px - var(--lt)) * ${n > 1 ? (i / (n - 1)).toFixed(3) : .5});top:calc((var(--photoH,360px) - var(--lt) / .86) * ${HAUT[i] ?? .3});
-      transform:rotate(${ROT[i]}deg);box-shadow:0 10px 26px rgba(0,0,0,.45);z-index:${Z[i]};display:flex;flex-direction:column">
+      transform:rotate(${ROT[i]}deg);box-shadow:var(--ombre-tirage);z-index:${Z[i]};display:flex;flex-direction:column">
       <div style="position:relative;flex:1;overflow:hidden;background:#222">${photoCadree(it, `${G}.${i}`)}</div>
       <div${ch(`${G}.${i}.legende`)} style="height:calc(var(--lt) * .19);display:flex;align-items:center;justify-content:center;font-family:'Cinzel',serif;font-size:calc(var(--lt) * .055);letter-spacing:.06em;color:#4a3f35;text-align:center;line-height:1.1;padding:0 4%">${esc(it.legende || '')}</div>
     </div>`).join('')}</div>`;
@@ -652,11 +664,11 @@ function rendrePlaquette(g, p){
     <h1${ch(P + '.nom')} data-hmax="200" data-tmax="128" style="margin:6px 0 0;max-width:100%;font-family:'Abril Fatface',serif;font-weight:400;font-size:128px;line-height:1;color:${CREME};text-align:center">${esc(p.nom)}</h1>
     <div style="display:flex;align-items:center;gap:14px;margin-top:6px">${etoile(10)}<span${ch(P + '.sousTitre')} style="font-family:'Cinzel',serif;font-size:17px;letter-spacing:0.22em;color:${OR}">${esc(maj(p.sousTitre))}</span>${etoile(10)}</div>
     ${(p.modePhoto || 'unique') !== 'unique' ? blocGalerie(p, P, R) : `<div style="position:relative;width:${R.largeur}%;margin-top:calc(28px*var(--esp))">
-      <div class="photo-cadre"${ch(P + '.photoPrincipale')} data-cadrage="${P}.photoReglages" style="position:relative;height:var(--photoH,360px);overflow:hidden;border-radius:16px;border:2px solid ${OR};box-shadow:0 18px 40px rgba(0,0,0,0.4)">
+      <div class="photo-cadre"${ch(P + '.photoPrincipale')} data-cadrage="${P}.photoReglages" style="position:relative;height:var(--photoH,360px);overflow:hidden;border-radius:16px;border:2px solid ${OR};box-shadow:var(--ombre-photo)">
         <img class="photo-img" src="${img(p.photoPrincipale)}" alt="${esc(g.nomScene)} — ${esc(p.nom)}" draggable="false" style="${stylePhotoImg(R)}">
       </div>
       ${p.photoMedaillon ? `
-      <div${ch(P + '.photoMedaillon')} style="position:absolute;right:-16px;bottom:-34px;padding:4px;border-radius:50%;background:${OR};box-shadow:0 10px 24px rgba(0,0,0,0.4)">
+      <div${ch(P + '.photoMedaillon')} style="position:absolute;right:-16px;bottom:-34px;padding:4px;border-radius:50%;background:${OR};box-shadow:var(--ombre-med)">
         <img src="${img(p.photoMedaillon)}" alt="${esc(p.legendeMedaillon)}" style="width:var(--medT,148px);height:var(--medT,148px);border-radius:50%;object-fit:cover;border:4px solid var(--deep)">
       </div>
       ${p.legendeMedaillon ? `<div${ch(P + '.legendeMedaillon')} style="position:absolute;right:var(--legR,110px);bottom:-30px;white-space:nowrap;font-family:'Cinzel',serif;font-size:12px;letter-spacing:0.2em;color:${OR}">${esc(maj(p.legendeMedaillon))}</div>` : ''}` : ''}
@@ -733,7 +745,7 @@ function ligneTarif(l, c){
 
 /* Les polaroïds de Flo ont déjà leur cadre : on affiche l'image telle quelle */
 const vignette = (src, l, h, rot = 0, champ = '') =>
-  `<img${champ ? ch(champ) : ''} src="${img(src)}" alt="" style="width:${l}px;height:${h}px;flex-shrink:0;object-fit:cover;transform:rotate(${rot}deg);box-shadow:0 3px 8px rgba(0,0,0,0.25)">`;
+  `<img${champ ? ch(champ) : ''} src="${img(src)}" alt="" style="width:${l}px;height:${h}px;flex-shrink:0;object-fit:cover;transform:rotate(${rot}deg);box-shadow:var(--ombre-vignette)">`;
 
 /* Groupe de lignes : si une ligne a un polaroïd, toutes gardent la place de la vignette pour rester alignées */
 function lignesTarif(lignes, chemin){
