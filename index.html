@@ -560,6 +560,10 @@ function migrerDonnees(d){
   if (d.global.instagram === undefined) d.global.instagram = 'https://www.instagram.com/mr_triton_magicien/';
   const norme = v => String(v ?? '').replace(/\s+/g, ' ').trim().toLowerCase();
   for (const p of d.prestations){
+    if (p.fiche && !p.fiche.sections){
+      p.fiche.sections = [{ titre: 'Besoins techniques', besoins: p.fiche.besoins || [] }];
+      delete p.fiche.besoins;
+    }
     for (const c of p.fiche?.chiffres || []){
       if (c.cle) continue;
       c.cle = cleIntitule(c.label);
@@ -737,8 +741,8 @@ function rendrePlaquette(g, p){
 /* =====================================================================
    2. Fiche technique
    ===================================================================== */
-function intertitre(texte){
-  return `<div style="display:flex;align-items:center;gap:12px;margin-top:calc(34px*var(--esp));margin-bottom:4px">${etoile(11, 'var(--deep)')}
+function intertitre(texte, champ = ''){
+  return `<div${champ ? ch(champ) : ''} style="display:flex;align-items:center;gap:12px;margin-top:calc(34px*var(--esp));margin-bottom:4px">${etoile(11, 'var(--deep)')}
     <span style="font-family:'Cinzel',serif;font-size:15px;font-weight:700;letter-spacing:0.14em;color:var(--deep)">${esc(maj(texte))}</span>
     <div style="flex-grow:1;height:2px;background:var(--deep)"></div></div>`;
 }
@@ -751,11 +755,15 @@ function rendreFiche(g, p){
       <span style="font-family:'Abril Fatface',serif;font-size:30px;line-height:1.05;color:var(--deep)">${esc(valeurDe(p, c))}</span></div>`
   ).join('<div style="width:1px;background:var(--deep)"></div>');
 
-  const besoins = (f.besoins || []).map((b, i) =>
-    `<div${ch(`${F}.besoins.${i}.titre`)} style="display:flex;gap:14px;align-items:flex-start;padding:calc(16px*var(--esp)) 0;border-bottom:1px dotted ${OR_PAPIER}">${picto(b.picto)}
+  /* Catégories de besoins (« Besoins techniques », « Animations supplémentaires »…), chacune avec son trait-titre */
+  const besoinsDe = (liste, chemin) => liste.map((b, i) =>
+    `<div${ch(`${chemin}.${i}.titre`)} style="display:flex;gap:14px;align-items:flex-start;padding:calc(16px*var(--esp)) 0;border-bottom:1px dotted ${OR_PAPIER}">${picto(b.picto)}
       <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:15px;font-weight:600">${esc(b.titre)}</span>
       ${b.detail ? `<span style="font-size:13.5px;line-height:1.4;color:${ENCRE2};white-space:pre-line">${esc(b.detail)}</span>` : ''}</div></div>`
   ).join('');
+  const sections = (f.sections || []).map((sec, k) => (sec.besoins || []).length
+    ? intertitre(sec.titre || 'Besoins techniques', `${F}.sections.${k}.titre`) + `<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:34px">${besoinsDe(sec.besoins, `${F}.sections.${k}.besoins`)}</div>`
+    : '').join('');
 
   const d = f.disposition?.afficher === false ? null : f.disposition, notes = d?.notes || [];
   const public_ = Array.from({length: 24}, () => `<div style="height:10px;border-radius:5px;background:${OR_PAPIER};opacity:0.55"></div>`).join('');
@@ -780,7 +788,7 @@ function rendreFiche(g, p){
 
   const corps = `
     ${chiffres ? `<div style="display:flex;margin-top:calc(52px*var(--esp));border-radius:12px;background:var(--soft);border:1.5px solid var(--deep)">${chiffres}</div>` : ''}
-    ${besoins ? intertitre('Besoins techniques') + `<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:34px">${besoins}</div>` : ''}
+    ${sections}
     ${disposition}
     <div style="flex-grow:1"></div>`;
   return enveloppePapier(g, p, 'Fiche technique', 78, corps);
@@ -1250,10 +1258,14 @@ function editeurFiche(P){
         <label class="case petite"><input type="checkbox" data-action="intitule-commun" data-chemin="${c}" ${commun ? 'checked' : ''}> Intitulé commun à tous les spectacles <i>(le modifier ici le change partout)</i></label>
         ${CLES_SYNCHRO[it.cle] ? `<label class="case petite"><input type="checkbox" data-action="synchro" data-chemin="${c}" ${synchro ? 'checked' : ''}> Synchronisé avec la ${CLES_SYNCHRO[it.cle]} de la plaquette</label>` : ''}`;
     }, { cle: '', label: '', valeur: '', propre: true }, { nom: x => intituleDe(x), ajouter: 'Ajouter une case' }), 'Durée, temps d’installation et de rangement, jauge… 4 cases conseillées.')
-    + section('Besoins techniques', liste('Besoins', F + '.besoins', c => `
-      <div class="rangee">${champPicto(c + '.picto')}${champ('Titre', c + '.titre')}</div>
-      ${champ('Détail', c + '.detail', { facultatif: true, long: 2, aide: 'Entrée pour aller à la ligne.' })}`,
-      { picto: 'people', titre: '', detail: '' }, { nom: b => b.titre, ajouter: 'Ajouter un besoin' }), 'Affichés sur deux colonnes : un nombre pair rend mieux.')
+    + section('Besoins', liste('Catégories', F + '.sections', cs => `
+      ${champ('Titre de la catégorie', cs + '.titre', { exemple: 'Besoins techniques' })}
+      ${liste('Besoins', cs + '.besoins', c => `
+        <div class="rangee">${champPicto(c + '.picto')}${champ('Titre', c + '.titre')}</div>
+        ${champ('Détail', c + '.detail', { facultatif: true, long: 2, aide: 'Entrée pour aller à la ligne.' })}`,
+        { picto: 'people', titre: '', detail: '' }, { nom: b => b.titre, ajouter: 'Ajouter un besoin' })}`,
+      { titre: 'Animations supplémentaires', besoins: [] }, { nom: sec => sec.titre || 'Besoins techniques', ajouter: 'Ajouter une catégorie' }),
+      'Chaque catégorie a son titre (avec le trait) et ses besoins, sur deux colonnes : un nombre pair rend mieux. Une catégorie sans besoin n’apparaît pas.')
     + section('Disposition idéale', `
       <label class="case"><input type="checkbox" data-action="disposition" ${dVisible ? 'checked' : ''}> Afficher le schéma de disposition</label>
       ${dVisible ? `${champ('Texte dans la scène', F + '.disposition.scene', { exemple: 'Scène · idéal 7 × 5 m' })}
@@ -1423,7 +1435,7 @@ function prestationVierge(){
     id: nouvelId('nouvelle'), nom: 'Nouvelle prestation', sousTitre: 'Spectacle de magie', accent: '#1F4E8C',
     photoPrincipale: null, photoMedaillon: null, legendeMedaillon: '', presentation: '', video: '', duree: '', versions: [],
     fiche: { chiffres: [{ cle: 'duree', label: 'Spectacle', synchro: true }, { cle: 'installation', label: 'Installation', valeur: '' }, { cle: 'rangement', label: 'Rangement', valeur: '' }, { cle: 'jauge', label: 'Jauge max.', synchro: true }],
-             besoins: [], disposition: null },
+             sections: [{ titre: 'Besoins techniques', besoins: [] }], disposition: null },
     tarifs: { titre: 'Tarifs ' + new Date().getFullYear(),
               spectacle: { libelle: '', description: '', prix: '', mentionPrix: 'TTC', polaroid: null, inclus: [], options: [] },
               animations: { conditions: '', lignes: [] } }
