@@ -713,8 +713,8 @@ function rendrePlaquette(g, p){
         <img class="photo-img" src="${img(p.photoPrincipale)}" alt="${esc(g.nomScene)} — ${esc(p.nom)}" draggable="false" style="${stylePhotoImg(R)}">
       </div>
       ${p.photoMedaillon ? `
-      <div${ch(P + '.photoMedaillon')} style="position:absolute;right:-16px;bottom:-34px;padding:4px;border-radius:50%;background:${OR};box-shadow:var(--ombre-med)">
-        <img src="${img(p.photoMedaillon)}" alt="${esc(p.legendeMedaillon)}" style="width:var(--medT,148px);height:var(--medT,148px);border-radius:50%;object-fit:cover;border:4px solid var(--deep)">
+      <div${ch(P + '.photoMedaillon')} class="photo-cadre" data-cadrage="${P}.medaillonCadrage" style="position:absolute;right:-16px;bottom:-34px;padding:4px;border-radius:50%;background:${OR};box-shadow:var(--ombre-med)">
+        <img class="photo-img" data-mode="position" draggable="false" src="${img(p.photoMedaillon)}" alt="${esc(p.legendeMedaillon)}" style="width:var(--medT,148px);height:var(--medT,148px);border-radius:50%;object-fit:cover;object-position:${cadrageDe(p.medaillonCadrage).x}% ${cadrageDe(p.medaillonCadrage).y}%;border:4px solid var(--deep)">
       </div>
       ${p.legendeMedaillon ? `<div${ch(P + '.legendeMedaillon')} style="position:absolute;right:var(--legR,110px);bottom:-30px;white-space:nowrap;font-family:'Cinzel',serif;font-size:12px;letter-spacing:0.2em;color:${OR}">${esc(maj(p.legendeMedaillon))}</div>` : ''}` : ''}
     </div>`}
@@ -1222,7 +1222,8 @@ function editeurPhotos(P){
       { img: null, legende: '' }, { nom: it => it.legende || 'Photo', ajouter: 'Ajouter un tirage' });
   else
     contenu = `<div class="rangee">${champImage('Photo principale', P + '.photoPrincipale')}${champImage('Médaillon', P + '.photoMedaillon', { facultatif: true })}</div>
-      ${champ('Légende du médaillon', P + '.legendeMedaillon', { facultatif: true })}`;
+      <div class="rangee">${champ('Légende du médaillon', P + '.legendeMedaillon', { facultatif: true })}
+        <div class="champ etroit"><span>&nbsp;</span><button type="button" class="petit" data-action="photo-reinit" data-chemin="${P}.medaillonCadrage" title="Pour cadrer : faites glisser la photo dans le médaillon de l’aperçu">Recentrer le médaillon</button></div></div>`;
   const avert = mode === 'polaroids' && (lire(G) || []).length > 5 ? '<p class="aide">⚠ Seuls les 5 premiers tirages sont affichés.</p>' : '';
   const entete = `<div class="sous-bloc"><div class="liste-titre">Fiche technique et tarifs</div>
     <div class="rangee">${champImage('Médaillon de l’en-tête', P + '.photoEntete', { facultatif: true })}
@@ -1237,7 +1238,7 @@ function reglagesPhotoHtml(P, mode = 'unique'){
     <div class="rangee">${champCurseur('Largeur', R + '.largeur', 30, 100, 1, 100, ' %')}${champCurseur('Hauteur', R + '.hauteur', 160, 560, 5, 360, ' px')}</div>
     <div class="rangee">${mode === 'unique' ? champCurseur('Zoom', R + '.zoom', 1, 3, .05, 1, '×') : '<div class="champ"></div>'}
       <div class="champ"><span>&nbsp;</span><button type="button" class="petit" data-action="photo-reinit" data-chemin="${R}">Réinitialiser les réglages</button></div></div>
-    <p class="aide">Pour cadrer : faites glisser ${mode === 'unique' ? 'la photo' : 'chaque photo'} dans l’aperçu de la plaquette.${mode === 'unique' ? ' Une photo en portrait : réduisez la largeur et augmentez la hauteur.' : ''}</p>
+    <p class="aide">Pour cadrer : faites glisser ${mode === 'unique' ? 'la photo ou le médaillon' : 'chaque photo'} dans l’aperçu de la plaquette.${mode === 'unique' ? ' Une photo en portrait : réduisez la largeur et augmentez la hauteur.' : ''}</p>
   </div>`;
 }
 
