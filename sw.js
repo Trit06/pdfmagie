@@ -20,6 +20,7 @@ self.addEventListener('fetch', e => {
     e.respondWith(fetch(req).then(memoriser).catch(() => caches.match(req).then(r => r || caches.match('index.html'))));
     return;
   }
-  if (url.origin === location.origin || /fonts\.(googleapis|gstatic)\.com$/.test(url.hostname))
+  /* bibliothèque de pictos (jsdelivr) gardée aussi pour un usage hors connexion */
+  if (url.origin === location.origin || /fonts\.(googleapis|gstatic)\.com$|cdn\.jsdelivr\.net$/.test(url.hostname))
     e.respondWith(caches.match(req).then(r => r || fetch(req).then(memoriser)));
 });

@@ -74,6 +74,23 @@ a{color:inherit}
 .barre-format button:hover{border-color:#A8823F;background:#fff}
 .barre-format span{font-size:11.5px;color:#9a8b7a;margin-left:4px}
 .sous-bloc{margin-top:12px;padding-top:4px;border-top:1px dashed #d6c8b2}
+#dlgPictos{width:min(720px,94vw);max-height:88vh;padding:0;border:0;border-radius:12px;background:#F3ECDF;color:#2A211A;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+#dlgPictos::backdrop{background:rgba(20,14,10,.6)}
+.picto-grille{display:grid;grid-template-columns:repeat(auto-fill,minmax(44px,1fr));gap:6px;max-height:300px;overflow:auto;padding:2px;margin-bottom:10px}
+.picto-grille.mes{grid-template-columns:repeat(auto-fill,minmax(86px,1fr));max-height:none}
+.picto-choix{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:44px;padding:6px 4px;border:1px solid #e1d5c2;border-radius:7px;background:#fffdf8;cursor:pointer;font:inherit}
+.picto-choix:hover{border-color:#A8823F;background:#fff}
+.picto-choix.actif{border-color:#2A211A;box-shadow:inset 0 0 0 1px #2A211A}
+.picto-choix small{font-size:10.5px;color:#5b4d3f;text-align:center;line-height:1.15}
+.picto-compte{grid-column:1/-1;margin:4px 0 0}
+.picto-source{font-weight:400;font-style:normal;color:#9a8b7a;font-size:11.5px}
+#picto-recherche{font:inherit;font-size:14px;padding:7px 10px;border:1px solid #cdbfa9;border-radius:6px;background:#fffdf8;width:100%;margin-bottom:8px}
+.picto-emoji-ligne{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+#picto-emoji{width:70px;font-size:20px;text-align:center;padding:4px;border:1px solid #cdbfa9;border-radius:6px;background:#fffdf8}
+.emoji-suggestions{display:flex;flex-wrap:wrap;gap:2px}
+.emoji{font-size:20px;width:34px;height:34px;border:0;border-radius:6px;background:none;cursor:pointer}
+.emoji:hover{background:#eadfcd}
+button.picto-apercu{display:flex;align-items:center;justify-content:center;width:40px;height:36px;padding:0;border:1px solid #cdbfa9;border-radius:6px;background:#fffdf8;cursor:pointer}
 .curseur output{font-weight:400;color:#7a5a2c;margin-left:4px}
 .curseur input[type=range]{width:100%;accent-color:#A8823F}
 .reglages-photo{padding:8px 10px 2px;margin-bottom:10px;border:1px solid #e1d5c2;border-radius:8px;background:#fbf7ef}
@@ -265,6 +282,27 @@ button.petit.danger{color:#9b2335;border-color:#d9a8a8}
   <main class="scene" id="scene"></main>
 </div>
 </div>
+
+<dialog id="dlgPictos">
+  <div class="biblio-tete">
+    <h2>Pictogramme</h2>
+    <button type="button" class="petit" onclick="this.closest('dialog').close()">Fermer</button>
+  </div>
+  <div class="sauv-corps">
+    <div class="liste-titre">Mes pictos</div>
+    <div id="picto-mes" class="picto-grille mes"></div>
+    <div class="liste-titre">Bibliothèque <i class="picto-source">(Lucide, plus de 1 800 pictos)</i></div>
+    <input type="search" id="picto-recherche" placeholder="Rechercher : voiture, micro, table, enfant… (ou en anglais)">
+    <div id="picto-biblio" class="picto-grille"></div>
+    <div class="liste-titre">Ou un emoji</div>
+    <div class="picto-emoji-ligne">
+      <input type="text" id="picto-emoji" maxlength="8" placeholder="🎈">
+      <button type="button" class="petit" id="picto-emoji-ok">Utiliser cet emoji</button>
+      <span class="emoji-suggestions"><button type="button" class="emoji" data-emoji="🎈">🎈</button><button type="button" class="emoji" data-emoji="🎩">🎩</button><button type="button" class="emoji" data-emoji="🪄">🪄</button><button type="button" class="emoji" data-emoji="🎪">🎪</button><button type="button" class="emoji" data-emoji="🎤">🎤</button><button type="button" class="emoji" data-emoji="🎵">🎵</button><button type="button" class="emoji" data-emoji="💡">💡</button><button type="button" class="emoji" data-emoji="🔌">🔌</button><button type="button" class="emoji" data-emoji="🚐">🚐</button><button type="button" class="emoji" data-emoji="🪑">🪑</button><button type="button" class="emoji" data-emoji="👶">👶</button><button type="button" class="emoji" data-emoji="⏰">⏰</button><button type="button" class="emoji" data-emoji="📽️">📽️</button><button type="button" class="emoji" data-emoji="🎭">🎭</button><button type="button" class="emoji" data-emoji="🧸">🧸</button><button type="button" class="emoji" data-emoji="🫧">🫧</button></span>
+    </div>
+    <p class="aide">Les emojis s’affichent en couleur (police du système), pas dans la teinte du spectacle.</p>
+  </div>
+</dialog>
 
 <dialog id="dlgCombine">
   <div class="biblio-tete">
@@ -474,6 +512,34 @@ const PICTOS = {
   table:  '<path d="M3 9h18"/><path d="M5 9v10M19 9v10"/><path d="M8 9V6h8v3"/>'
 };
 const picto = nom => `<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--deep)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display:block;flex-shrink:0">${PICTOS[nom] || PICTOS.people}</svg>`;
+
+/* Picto d'un besoin : préréglé (b.picto = 'people'…), bibliothèque Lucide (b.pictoNoeuds) ou emoji (b.picto = 'emoji:🎈').
+   Les formes de la bibliothèque sont gardées dans les données (fonctionne hors connexion) et
+   reconstruites ici avec une liste blanche de balises et d'attributs. */
+const BALISES_SVG = ['path', 'circle', 'rect', 'line', 'polyline', 'polygon', 'ellipse'];
+const ATTRS_SVG = ['d', 'cx', 'cy', 'r', 'rx', 'ry', 'x', 'y', 'x1', 'y1', 'x2', 'y2', 'width', 'height', 'points'];
+const noeudsVersSvg = noeuds => (noeuds || []).filter(n => BALISES_SVG.includes(n?.[0])).map(([t, a]) =>
+  `<${t} ${Object.entries(a || {}).filter(([k]) => ATTRS_SVG.includes(k)).map(([k, v]) => `${k}="${escBrut(v)}"`).join(' ')}/>`).join('');
+/* Emoji → petite image PNG : les emojis couleur en texte deviennent dans le PDF des « masques de luminosité »
+   (rectangles sombres dans l'aperçu iOS) ; une image avec transparence s'affiche partout. */
+const IMAGES_EMOJI = new Map();
+function emojiEnImage(e){
+  if (!IMAGES_EMOJI.has(e)){
+    const c = document.createElement('canvas'); c.width = c.height = 96;
+    const ctx = c.getContext('2d');
+    ctx.font = '78px "Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(e, 48, 52);
+    IMAGES_EMOJI.set(e, c.toDataURL('image/png'));
+  }
+  return IMAGES_EMOJI.get(e);
+}
+function pictoBesoin(b, couleur = 'var(--deep)', taille = 26){
+  const v = String(b?.picto || '');
+  if (v.startsWith('emoji:')) return `<img src="${emojiEnImage(v.slice(6))}" alt="${escBrut(v.slice(6))}" style="display:block;flex-shrink:0;width:${taille}px;height:${taille}px">`;
+  const contenu = b?.pictoNoeuds ? noeudsVersSvg(b.pictoNoeuds) : (PICTOS[v] || PICTOS.people);
+  return `<svg width="${taille}" height="${taille}" viewBox="0 0 24 24" fill="none" stroke="${couleur}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display:block;flex-shrink:0">${contenu}</svg>`;
+}
 
 const NOMBRES = ['', 'UNE', 'DEUX', 'TROIS', 'QUATRE', 'CINQ'];
 const videoCourte = url => String(url || '').replace(/^https?:\/\//, '').replace(/^www\./, '');
@@ -757,7 +823,7 @@ function rendreFiche(g, p){
 
   /* Catégories de besoins (« Besoins techniques », « Animations supplémentaires »…), chacune avec son trait-titre */
   const besoinsDe = (liste, chemin) => liste.map((b, i) =>
-    `<div${ch(`${chemin}.${i}.titre`)} style="display:flex;gap:14px;align-items:flex-start;padding:calc(16px*var(--esp)) 0;border-bottom:1px dotted ${OR_PAPIER}">${picto(b.picto)}
+    `<div${ch(`${chemin}.${i}.titre`)} style="display:flex;gap:14px;align-items:flex-start;padding:calc(16px*var(--esp)) 0;border-bottom:1px dotted ${OR_PAPIER}">${pictoBesoin(b)}
       <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:15px;font-weight:600">${esc(b.titre)}</span>
       ${b.detail ? `<span style="font-size:13.5px;line-height:1.4;color:${ENCRE2};white-space:pre-line">${esc(b.detail)}</span>` : ''}</div></div>`
   ).join('');
@@ -1086,10 +1152,10 @@ function champImage(label, chemin, o = {}){
 }
 
 function champPicto(chemin){
-  const v = lire(chemin) || 'people';
-  return `<label class="champ"><span>Picto</span><div class="picto-ligne">
-    <span class="picto-apercu">${picto(v).replace(/var\(--deep\)/g, '#5a2a20')}</span>
-    <select data-chemin="${chemin}">${Object.entries(PICTO_NOMS).map(([k, n]) => `<option value="${k}"${k === v ? ' selected' : ''}>${n}</option>`).join('')}</select></div></label>`;
+  const base = chemin.replace(/\.picto$/, ''), b = lire(base) || {};
+  return `<div class="champ"><span>Picto</span><div class="picto-ligne">
+    <button type="button" class="picto-apercu" data-action="picto" data-chemin="${base}" title="Changer de picto">${pictoBesoin(b, '#5a2a20')}</button>
+    <button type="button" class="petit" data-action="picto" data-chemin="${base}">Changer…</button></div></div>`;
 }
 
 /* Liste d'éléments : ajout, suppression, réordonnancement */
@@ -1378,6 +1444,7 @@ function surClic(e){
     case 'photo-reinit': ecrire(chemin, null); break;
     case 'teinte-auto': ecrire(chemin, null); break;
     case 'aligner': ecrire(chemin, b.dataset.valeur); break;
+    case 'picto': ouvrirPictos(chemin); return;
     case 'format': appliquerFormat($(`#editeur-contenu textarea[data-chemin="${b.closest('.barre-format').dataset.cible}"]`), b.dataset.marque); return;
     case 'mode-photo': {
       /* premier passage en mode multi-photos : on part des photos déjà choisies */
@@ -1613,6 +1680,72 @@ let minuterieNotif;
 function notifier(texte){
   const n = $('#notif'); n.textContent = texte; n.classList.add('visible');
   clearTimeout(minuterieNotif); minuterieNotif = setTimeout(() => n.classList.remove('visible'), 2600);
+}
+
+/* =====================================================================
+   Pictogrammes : mes pictos, bibliothèque Lucide (1 800+, licence libre ISC), emojis
+   ===================================================================== */
+const LUCIDE = 'https://cdn.jsdelivr.net/npm/lucide-static@1.52.0/';
+let lucide = null, cheminPicto = null;
+/* Recherche en français : quelques mots courants traduits vers les mots-clés (anglais) de la bibliothèque */
+const MOTS_FR = { voiture: 'car', camion: 'truck', fourgon: 'van', vehicule: 'car', parking: 'parking', lumiere: 'light', lampe: 'lamp', projecteur: 'spotlight',
+  son: 'volume', enceinte: 'speaker', micro: 'mic', musique: 'music', prise: 'plug', electricite: 'zap', courant: 'plug', batterie: 'battery',
+  table: 'table', chaise: 'chair', escalier: 'stairs', porte: 'door', scene: 'theater', rideau: 'curtain', ecran: 'monitor', video: 'video', camera: 'camera',
+  photo: 'camera', enfant: 'baby', enfants: 'baby', personne: 'user', personnes: 'users', public: 'users', artiste: 'user', temps: 'clock', heure: 'clock',
+  duree: 'timer', calendrier: 'calendar', eau: 'droplet', boisson: 'cup', repas: 'utensils', cle: 'key', fete: 'party', cadeau: 'gift', ballon: 'balloon',
+  etoile: 'star', coeur: 'heart', feu: 'flame', neige: 'snowflake', soleil: 'sun', pluie: 'cloud-rain', exterieur: 'trees', interieur: 'house', maison: 'house',
+  maquillage: 'palette', peinture: 'paintbrush', magie: 'wand', baguette: 'wand', chapeau: 'hat', carte: 'card', cartes: 'spade', livre: 'book', telephone: 'phone',
+  internet: 'wifi', wifi: 'wifi', regie: 'sliders', vestiaire: 'shirt', loge: 'shirt', securite: 'shield', accessibilite: 'accessibility', hauteur: 'ruler', taille: 'ruler',
+  poids: 'weight', bruit: 'volume', silence: 'volume-x', noir: 'moon', nuit: 'moon', fumee: 'cloud', bulle: 'circle', bulles: 'circle' };
+const sansAccent = t => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+
+async function chargerLucide(){
+  if (lucide) return lucide;
+  const [noeuds, tags] = await Promise.all(['icon-nodes.json', 'tags.json'].map(f => fetch(LUCIDE + f).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })));
+  return lucide = { noeuds, tags, noms: Object.keys(noeuds) };
+}
+
+function ouvrirPictos(chemin){
+  cheminPicto = chemin;
+  const b = lire(chemin) || {};
+  $('#picto-mes').innerHTML = Object.entries(PICTO_NOMS).map(([k, n]) =>
+    `<button type="button" class="picto-choix${b.picto === k && !b.pictoNoeuds ? ' actif' : ''}" data-picto="${k}" title="${n}">${pictoBesoin({ picto: k }, '#2A211A', 28)}<small>${n}</small></button>`).join('');
+  $('#picto-recherche').value = '';
+  $('#picto-emoji').value = String(b.picto || '').startsWith('emoji:') ? b.picto.slice(6) : '';
+  $('#dlgPictos').showModal();
+  remplirBibliotheque();
+}
+
+async function remplirBibliotheque(){
+  const grille = $('#picto-biblio');
+  try {
+    if (!lucide) grille.innerHTML = '<p class="aide">Chargement de la bibliothèque…</p>';
+    const L = await chargerLucide();
+    const q = sansAccent($('#picto-recherche').value);
+    const termes = q ? [q, MOTS_FR[q]].filter(Boolean) : [];
+    /* classement : nom exact, puis mot entier du nom ou d'un mot-clé, puis (mots de 4 lettres et plus) morceau de mot */
+    const score = n => Math.max(0, ...termes.map(t => {
+      const mots = n.split('-'), tags = L.tags[n] || [];
+      if (n === t) return 5;
+      if (mots.includes(t)) return 4;
+      if (tags.some(g => g === t || g.split(/[\s-]/).includes(t))) return 3;
+      if (t.length >= 4 && (n.includes(t) || tags.some(g => g.includes(t)))) return 1;
+      return 0;
+    }));
+    const trouves = termes.length ? L.noms.map(n => [n, score(n)]).filter(([, sc]) => sc).sort((x, y) => y[1] - x[1]).map(([n]) => n) : L.noms;
+    const affiches = trouves.slice(0, 300);
+    grille.innerHTML = affiches.map(n => `<button type="button" class="picto-choix" data-lucide="${n}" title="${n}">${pictoBesoin({ pictoNoeuds: L.noeuds[n] }, '#2A211A', 26)}</button>`).join('')
+      + `<p class="aide picto-compte">${trouves.length > 300 ? `${trouves.length} pictos : précisez la recherche pour voir les autres.` : trouves.length ? `${trouves.length} picto${trouves.length > 1 ? 's' : ''}.` : 'Aucun résultat. Essayez un autre mot, en français ou en anglais.'}</p>`;
+  } catch {
+    grille.innerHTML = '<p class="aide">Bibliothèque indisponible (pas de connexion ?). Vos pictos et les emojis restent utilisables.</p>';
+  }
+}
+
+function choisirPicto(valeur, noeuds = null){
+  const b = lire(cheminPicto) || {};
+  ecrire(cheminPicto, { ...b, picto: valeur, pictoNoeuds: noeuds });
+  $('#dlgPictos').close();
+  construireEditeur(); afficher();
 }
 
 /* =====================================================================
@@ -2111,6 +2244,17 @@ async function init(){
   });
   $('#btnPdf').onclick = exporterPdf;
   $('#btnPdfPlus').onclick = ouvrirCombine;
+  $('#dlgPictos').addEventListener('click', e => {
+    if (e.target === $('#dlgPictos')) return $('#dlgPictos').close();
+    const b = e.target.closest('.picto-choix, .emoji');
+    if (!b) return;
+    if (b.dataset.picto) choisirPicto(b.dataset.picto);
+    else if (b.dataset.lucide) choisirPicto('lucide:' + b.dataset.lucide, lucide.noeuds[b.dataset.lucide]);
+    else if (b.dataset.emoji) choisirPicto('emoji:' + b.dataset.emoji);
+  });
+  let minuterieRecherche;
+  $('#picto-recherche').oninput = () => { clearTimeout(minuterieRecherche); minuterieRecherche = setTimeout(remplirBibliotheque, 200); };
+  $('#picto-emoji-ok').onclick = () => { const v = $('#picto-emoji').value.trim(); if (v) choisirPicto('emoji:' + v); };
   $('#btnSauvegarde').onclick = ouvrirSauvegarde;
   $('#btnExporter').onclick = exporterSauvegarde;
   $('#fichierSauvegarde').onchange = e => { const f = e.target.files[0]; e.target.value = ''; if (f) importerSauvegarde(f); };
