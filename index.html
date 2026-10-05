@@ -69,6 +69,10 @@ a{color:inherit}
 .case.petite{font-size:12.5px;margin:-4px 0 8px;color:#5b4d3f}
 .case.petite i{font-style:normal;color:#9a8b7a;font-size:11.5px}
 .badge{display:inline-block;margin-left:4px;padding:0 6px;border-radius:8px;background:#e8dcc5;color:#7a5a2c;font-size:10.5px;font-weight:600;letter-spacing:.03em}
+.barre-format{display:flex;align-items:center;gap:4px;margin:0 0 4px}
+.barre-format button{width:30px;height:26px;border:1px solid #cdbfa9;border-radius:5px;background:#fffdf8;color:#2A211A;cursor:pointer;font:inherit;font-size:14px}
+.barre-format button:hover{border-color:#A8823F;background:#fff}
+.barre-format span{font-size:11.5px;color:#9a8b7a;margin-left:4px}
 .curseur output{font-weight:400;color:#7a5a2c;margin-left:4px}
 .curseur input[type=range]{width:100%;accent-color:#A8823F}
 .reglages-photo{padding:8px 10px 2px;margin-bottom:10px;border:1px solid #e1d5c2;border-radius:8px;background:#fbf7ef}
@@ -327,6 +331,7 @@ let DONNEES = {
     "telephone": "06 19 47 14 53",
     "email": "contact@triton-magicien.com",
     "site": "www.triton-magicien.com",
+    "instagram": "https://www.instagram.com/mr_triton_magicien/",
     "distinctions": [
       { "texte": "3ᵉ prix Championnat du Monde 2022", "imageOr": "assets/laurier-monde-or.png", "imageBrun": "assets/laurier-monde-brun.png" },
       { "texte": "Champion de France 2018", "imageOr": "assets/laurier-france-or.png", "imageBrun": "assets/laurier-france-brun.png" }
@@ -546,6 +551,7 @@ const valeurDe = (p, c) => estSynchro(c) ? p[c.cle] : c.valeur;
 /* Mise à niveau des données existantes (sans effet si déjà faite) */
 function migrerDonnees(d){
   d.global.intitules ??= {};
+  if (d.global.instagram === undefined) d.global.instagram = 'https://www.instagram.com/mr_triton_magicien/';
   const norme = v => String(v ?? '').replace(/\s+/g, ' ').trim().toLowerCase();
   for (const p of d.prestations){
     for (const c of p.fiche?.chiffres || []){
@@ -631,6 +637,30 @@ const nomSceneDe = (g, p) => String(p.nomScene || '').trim() || g.nomScene;
 const plusieurs = nom => /\s(et|&)\s|,/i.test(nom);
 
 /* Logo de la vidéo aux couleurs du thème : bouton YouTube doré (triangle dans la teinte foncée), sinon un simple « lecture » */
+/* Texte de présentation : **gras**, *italique*, __souligné__ (sur le texte déjà échappé) */
+function texteMisEnForme(t){
+  return esc(t)
+    .replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')
+    .replace(/(^|[^\w])__(.+?)__(?![\w])/g, '$1<u>$2</u>')
+    .replace(/\*(.+?)\*/g, '<i>$1</i>');
+}
+
+/* Réseaux sociaux : adresse complète à partir d'une adresse ou d'un @pseudo, et pseudo à afficher */
+function urlReseau(v, domaine){
+  const t = String(v || '').trim();
+  if (!t) return '';
+  if (/^https?:\/\//i.test(t)) return t;
+  if (t.includes('.')) return 'https://' + t.replace(/^\/+/, '');
+  return `https://www.${domaine}/${t.replace(/^@/, '')}`;
+}
+const pseudoDe = v => String(v || '').trim().replace(/^https?:\/\//i, '').replace(/^(www\.)?[^/]+\//, '').replace(/^@/, '').split(/[/?#]/)[0];
+
+/* Logos dorés aux couleurs du thème (forme or, détail dans la teinte foncée) */
+const LOGO_FACEBOOK = `<svg width="16" height="16" viewBox="0 0 20 20" style="display:block;flex-shrink:0" aria-label="Facebook"><rect width="20" height="20" rx="4.5" fill="${OR}"/><path d="M13.6 20v-7.2h2.3l.4-2.8h-2.7V8.3c0-.8.3-1.4 1.4-1.4h1.4V4.4c-.3 0-1.1-.1-2.1-.1-2.1 0-3.5 1.3-3.5 3.6V10H8.5v2.8h2.3V20z" fill="var(--deep)"/></svg>`;
+const LOGO_INSTAGRAM = `<svg width="16" height="16" viewBox="0 0 20 20" style="display:block;flex-shrink:0" aria-label="Instagram"><rect width="20" height="20" rx="5.5" fill="${OR}"/><rect x="4" y="4" width="12" height="12" rx="3.6" fill="none" stroke="var(--deep)" stroke-width="1.7"/><circle cx="10" cy="10" r="2.9" fill="none" stroke="var(--deep)" stroke-width="1.7"/><circle cx="13.7" cy="6.3" r="1" fill="var(--deep)"/></svg>`;
+const ligneLien = (href, logo, texte, champ) =>
+  `<span${ch(champ)} style="display:block">${lien(href, `<span style="display:inline-flex;align-items:center;gap:7px">${logo}${texte}</span>`)}</span>`;
+
 function logoVideo(url){
   const youtube = /youtu\.?be/i.test(url || '');
   return youtube
@@ -652,7 +682,16 @@ function rendrePlaquette(g, p){
   if (avecJauge) infos.push(blocInfo(courte, 'JAUGE', esc(p.jauge), 16, P + '.jauge'));
   if (versions.length) infos.push(blocInfo(avecJauge ? 2.1 : 1.6, p.titreVersions ? esc(maj(p.titreVersions)) : (NOMBRES[versions.length] ? NOMBRES[versions.length] + ' ' : '') + (versions.length > 1 ? 'VERSIONS' : 'VERSION'),
       versions.map(v => esc(v.nom) + (v.detail ? ' · ' + esc(v.detail) : '')).join('<br>'), 14, P + '.versions.0.nom'));
-  if (p.video) infos.push(blocInfo(1, 'VIDÉO', `<span style="font-weight:500">${lien(urlSite(p.video), `<span style="display:inline-flex;align-items:center;gap:7px">${logoVideo(p.video)}${esc(videoCourte(p.video))}</span>`)}</span>`, 14, P + '.video'));
+  /* Vidéo + pages Facebook / Instagram du spectacle (s'il y en a) dans la même case */
+  const fb = urlReseau(p.facebook, 'facebook.com'), ig = urlReseau(p.instagram, 'instagram.com');
+  const lignesEnLigne = [
+    p.video ? ligneLien(urlSite(p.video), logoVideo(p.video), esc(videoCourte(p.video)), P + '.video') : '',
+    fb ? ligneLien(fb, LOGO_FACEBOOK, esc(pseudoDe(p.facebook)), P + '.facebook') : '',
+    ig ? ligneLien(ig, LOGO_INSTAGRAM, '@' + esc(pseudoDe(p.instagram)), P + '.instagram') : ''].filter(Boolean);
+  if (lignesEnLigne.length){
+    const titre = (fb || ig) ? (p.video ? 'INFOS ET VIDÉO' : 'INFOS') : 'VIDÉO';
+    infos.push(blocInfo(1, titre, `<span style="display:inline-flex;flex-direction:column;align-items:flex-start;gap:3px;font-weight:500">${lignesEnLigne.join('')}</span>`, 14));
+  }
 
   return `<div class="page" data-photoh="${R.hauteur}" data-photol="${R.largeur}" style="${styleTeintes(p)};--photoH:${R.hauteur}px;background:var(--deep);color:${CREME}">
   <img class="tex" src="${TEXTURE}" alt="" style="opacity:.55">
@@ -676,11 +715,15 @@ function rendrePlaquette(g, p){
     <div style="display:flex;gap:40px;margin-top:calc(48px*var(--esp))">
       ${(g.distinctions || []).map((d, i) => `<img${ch(`global.distinctions.${i}.texte`)} src="${img(d.imageOr)}" alt="${esc(d.texte)}" style="height:54px">`).join('')}
     </div>
-    <p${ch(P + '.presentation')} style="margin:calc(20px*var(--esp)) 0 0;width:100%;max-width:610px;text-align:${p.alignPresentation || 'center'};${p.alignPresentation === 'justify' ? 'hyphens:auto;' : ''}font-size:var(--texteT,16px);line-height:1.55;white-space:pre-line">${esc(p.presentation)}</p>
+    <p${ch(P + '.presentation')} style="margin:calc(20px*var(--esp)) 0 0;width:100%;max-width:610px;text-align:${p.alignPresentation || 'center'};${p.alignPresentation === 'justify' ? 'hyphens:auto;' : ''}font-size:var(--texteT,16px);line-height:1.55;white-space:pre-wrap">${texteMisEnForme(p.presentation)}</p>
     ${infos.length ? `<div style="display:flex;margin-top:calc(24px*var(--esp));width:100%;border-top:1px solid ${OR};border-bottom:1px solid ${OR}">${infos.join(sep)}</div>` : ''}
     <div style="flex-grow:1"></div>
     <div style="font-size:13px;text-align:center">${contactLigne(g)}</div>
-    <div${ch('global.site')} style="font-family:'Cinzel',serif;font-size:17px;letter-spacing:0.16em;color:${OR};margin-top:4px">${lien(urlSite(g.site), esc(g.site))}</div>
+    <div style="display:flex;align-items:center;justify-content:center;gap:16px;margin-top:4px">
+      <div${ch('global.site')} style="font-family:'Cinzel',serif;font-size:17px;letter-spacing:0.16em;color:${OR}">${lien(urlSite(g.site), esc(g.site))}</div>
+      ${g.instagram ? `<div style="width:1px;height:16px;background:${OR};opacity:.7"></div>
+      <div${ch('global.instagram')} style="font-size:13.5px;letter-spacing:.04em;color:${OR}">${lien(urlReseau(g.instagram, 'instagram.com'), `<span style="display:inline-flex;align-items:center;gap:6px">${LOGO_INSTAGRAM}@${esc(pseudoDe(g.instagram))}</span>`)}</div>` : ''}
+    </div>
   </div>
 </div>`;
 }
@@ -1068,7 +1111,8 @@ function editeurGlobal(){
       <div class="rangee">${champ('Code postal', 'global.codePostal', { classe: 'etroit' })}${champ('Ville', 'global.ville')}</div>`)
     + section('Contact', `
       <div class="rangee">${champ('Téléphone', 'global.telephone')}${champ('E-mail', 'global.email')}</div>
-      ${champ('Site', 'global.site')}`)
+      ${champ('Site', 'global.site')}
+      ${champ('Instagram', 'global.instagram', { facultatif: true, exemple: 'https://www.instagram.com/mr_triton_magicien/', aide: 'En bas de la plaquette, à droite du site. Vide : non affiché.' })}`)
     + section('Distinctions', liste('Lauriers', 'global.distinctions', c => `
       ${champ('Texte', c + '.texte', { aide: 'Utilisé comme texte alternatif ; le visuel vient des images.' })}
       <div class="rangee">${champImage('Version or (plaquette)', c + '.imageOr')}${champImage('Version brune (fiche, tarifs)', c + '.imageBrun')}</div>`,
@@ -1091,14 +1135,36 @@ function editeurPrestation(P){
     + section('Couleur d\'accent', roueHtml(), 'Les teintes foncée et pâle sont calculées depuis l’accent ; vous pouvez aussi les choisir vous-même.')
     + section('Photos', editeurPhotos(P))
     + section('Présentation', `
-      ${champ('Texte de présentation', P + '.presentation', { long: 5 })}
+      <div class="barre-format" data-cible="${P}.presentation">
+        <button type="button" data-action="format" data-marque="**" title="Gras (Ctrl+B)"><b>G</b></button>
+        <button type="button" data-action="format" data-marque="*" title="Italique (Ctrl+I)"><i>I</i></button>
+        <button type="button" data-action="format" data-marque="__" title="Souligné (Ctrl+U)"><u>S</u></button>
+        <span>Sélectionnez des mots puis cliquez</span></div>
+      ${champ('Texte de présentation', P + '.presentation', { long: 5, aide: '**gras**, *italique*, __souligné__ · les espaces en début de ligne sont conservés.' })}
       ${choixAlignement(P + '.alignPresentation')}
       <div class="rangee">${champ('Durée', P + '.duree', { exemple: '50 min', classe: 'etroit' })}${champ('Jauge', P + '.jauge', { exemple: '400', classe: 'etroit', facultatif: true })}${champ('Lien vidéo', P + '.video', { facultatif: true })}</div>
+      <div class="rangee">${champ('Facebook du spectacle', P + '.facebook', { facultatif: true, exemple: 'facebook.com/illusionspoetiques' })}${champ('Instagram du spectacle', P + '.instagram', { facultatif: true, exemple: '@compte' })}</div>
       <label class="case"><input type="checkbox" data-action="jauge-plaquette" data-chemin="${P}.jaugePlaquette" ${lire(P + '.jaugePlaquette') !== false ? 'checked' : ''}> Afficher la jauge sur la plaquette</label>
       <p class="aide">Durée et jauge sont partagées avec la fiche technique (cases synchronisées).</p>`)
     + section('Versions', champ('Titre du bloc', P + '.titreVersions', { facultatif: true, exemple: 'Deux versions', aide: 'Vide : « Deux versions », « Trois versions »… selon le nombre.' }) + liste('Versions', P + '.versions', c => `
       <div class="rangee">${champ('Nom', c + '.nom', { classe: 'etroit' })}${champ('Détail', c + '.detail')}</div>`,
       { nom: '', detail: '' }, { nom: v => v.nom, ajouter: 'Ajouter une version' }));
+}
+
+/* Entoure la sélection de marques (**, *, __) ou les retire si elles y sont déjà */
+function appliquerFormat(zone, marque){
+  if (!zone) return;
+  let { selectionStart: a, selectionEnd: b, value: v } = zone;
+  if (a === b){ zone.focus(); return; }
+  /* on n'englobe pas les espaces sélectionnés aux extrémités */
+  while (a < b && /\s/.test(v[a])) a++;
+  while (b > a && /\s/.test(v[b - 1])) b--;
+  const m = marque.length, avant = v.slice(a - m, a), apres = v.slice(b, b + m);
+  const deja = avant === marque && apres === marque && !(marque === '*' && (v[a - m - 1] === '*' || v[b + m] === '*'));
+  if (deja){ zone.value = v.slice(0, a - m) + v.slice(a, b) + v.slice(b + m); zone.setSelectionRange(a - m, b - m); }
+  else { zone.value = v.slice(0, a) + marque + v.slice(a, b) + marque + v.slice(b); zone.setSelectionRange(a + m, b + m); }
+  zone.focus();
+  zone.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
 function choixAlignement(chemin){
@@ -1271,6 +1337,7 @@ function surClic(e){
     case 'photo-reinit': ecrire(chemin, null); break;
     case 'teinte-auto': ecrire(chemin, null); break;
     case 'aligner': ecrire(chemin, b.dataset.valeur); break;
+    case 'format': appliquerFormat($(`#editeur-contenu textarea[data-chemin="${b.closest('.barre-format').dataset.cible}"]`), b.dataset.marque); return;
     case 'mode-photo': {
       /* premier passage en mode multi-photos : on part des photos déjà choisies */
       const G = chemin.replace(/modePhoto$/, 'galerie'), pr = lire(chemin.replace(/\.modePhoto$/, ''));
@@ -1956,6 +2023,12 @@ async function init(){
   remplirPrestations();
   $('#btnAnnuler').onclick = annuler;
   $('#btnRetablir').onclick = retablir;
+  /* Ctrl+B / I / U dans le texte de présentation */
+  $('#editeur-contenu').addEventListener('keydown', e => {
+    if (!(e.ctrlKey || e.metaKey) || !e.target.matches('textarea[data-chemin$=".presentation"]')) return;
+    const marque = { b: '**', i: '*', u: '__' }[e.key.toLowerCase()];
+    if (marque){ e.preventDefault(); appliquerFormat(e.target, marque); }
+  });
   document.addEventListener('keydown', e => {
     if (!(e.ctrlKey || e.metaKey) || document.querySelector('dialog[open]')) return;
     const k = e.key.toLowerCase();
