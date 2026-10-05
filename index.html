@@ -760,9 +760,9 @@ function rendreFiche(g, p){
       <div style="width:320px;height:70px;border:1.5px solid var(--deep);border-radius:6px;background:var(--soft);display:flex;align-items:center;justify-content:center;font-size:13px"${ch(F + '.disposition.scene')}>${esc(d.scene)}</div>
       ${d.escalier !== false ? `<div${ch(F + '.disposition.escalierTexte')} style="position:relative;width:320px;height:21px;margin:-8px 0 4px">
         <svg width="42" height="21" viewBox="0 0 42 21" style="position:absolute;left:139px;top:0;display:block">
-          <rect x="1" y="0.65" width="40" height="6" fill="var(--soft)" stroke="var(--deep)" stroke-width="1.1"/>
+          <rect x="5.5" y="0.65" width="31" height="6" fill="var(--soft)" stroke="var(--deep)" stroke-width="1.1"/>
           <rect x="5.5" y="6.95" width="31" height="6" fill="var(--soft)" stroke="var(--deep)" stroke-width="1.1"/>
-          <rect x="10.5" y="13.25" width="21" height="6" fill="var(--soft)" stroke="var(--deep)" stroke-width="1.1"/></svg>
+          <rect x="5.5" y="13.25" width="31" height="6" fill="var(--soft)" stroke="var(--deep)" stroke-width="1.1"/></svg>
         <span style="position:absolute;left:190px;top:4px;white-space:nowrap;font-size:11px;color:${ENCRE2}">${esc(d.escalierTexte || 'Escalier central · accès facile à la scène')}</span>
       </div>` : ''}
       <div style="display:flex;gap:22px;align-items:center">
